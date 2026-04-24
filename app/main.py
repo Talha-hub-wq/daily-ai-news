@@ -2,6 +2,9 @@ import logging
 import sys
 import os
 from pathlib import Path
+from flask import Flask, jsonify
+import threading
+import time
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -36,6 +39,9 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+# Initialize Flask app
+app = Flask(__name__)
 
 
 def send_daily_news():
@@ -121,14 +127,17 @@ def main():
                 print("Options:")
                 print("  --run-once    Run the news update once (for testing)")
                 print("  --help        Show this help message")
-                print("\nWithout options, the app will start the scheduler")
+                print("\nWithout options, starts Flask web service (for Render)")
                 return
         
-        # Start scheduler
-        logger.info(f"Starting scheduler. Daily email will be sent at {SCHEDULE_TIME}")
-        scheduler = NewsScheduler()
-        scheduler.schedule_daily(SCHEDULE_TIME, send_daily_news)
-        scheduler.start()
+        # Start Flask web service (for Render deployment)
+        logger.info("Starting Flask web service on port 5000...")
+        logger.info("Available endpoints:")
+        logger.info("  GET  / → Health check")
+        logger.info("  POST /trigger-news → Trigger news update")
+        
+        port = int(os.getenv("PORT", 5000))
+        app.run(host="0.0.0.0", port=port, debug=False)
     
     except ValueError as e:
         logger.error(f"Configuration error: {e}")
@@ -142,6 +151,71 @@ def main():
         logger.error(f"Fatal error: {e}", exc_info=True)
         print(f"\n❌ Error: {e}")
         sys.exit(1)
+
+
+# Flask Routes
+
+@app.route('/', methods=['GET'])
+def health_check():
+    """Health check endpoint - used by Render to verify service is running."""
+    return jsonify({
+        "status": "healthy",
+        "service": "Daily AI News Automation",
+        "version": "1.0",
+        "next_run": f"Daily at {SCHEDULE_TIME} UTC"
+    }), 200
+
+
+@app.route('/trigger-news', methods=['POST'])
+def trigger_news_endpoint():
+    """Endpoint to trigger news update via HTTP request."""
+    try:
+        logger.info("News update triggered via HTTP endpoint")
+        success = send_daily_news()
+        
+        if success:
+            return jsonify({
+                "status": "success",
+                "message": "News email sent successfully"
+            }), 200
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Failed to send news email"
+            }), 500
+    
+    except Exception as e:
+        logger.error(f"Error in trigger endpoint: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/logs', methods=['GET'])
+def get_logs():
+    """Endpoint to view recent logs."""
+    try:
+        log_file = 'logs/app.log'
+        if os.path.exists(log_file):
+            with open(log_file, 'r') as f:
+                logs = f.readlines()
+            # Return last 50 lines
+            recent_logs = logs[-50:]
+            return jsonify({
+                "status": "success",
+                "logs": recent_logs
+            }), 200
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Log file not found"
+            }), 404
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 
 if __name__ == "__main__":

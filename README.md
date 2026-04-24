@@ -37,37 +37,59 @@ daily AI news/
 
 ## 🚀 Deployment Guides
 
-### Quick Start (Choose One)
+### ⭐ CHOOSE YOUR DEPLOYMENT METHOD
 
-| Guide | Time | Best For |
-|-------|------|----------|
-| [**RENDER_QUICKSTART.md**](RENDER_QUICKSTART.md) | 5 min | Deploy immediately |
-| [**STEP_BY_STEP_GUIDE.md**](STEP_BY_STEP_GUIDE.md) | 30 min | Visual walkthrough |
-| [**DEPLOYMENT.md**](DEPLOYMENT.md) | Detailed | Complete reference |
-| [**DEPLOYMENT_CHECKLIST.md**](DEPLOYMENT_CHECKLIST.md) | Reference | Verification checklist |
-| [**GITHUB_SETUP.md**](GITHUB_SETUP.md) | 10 min | GitHub push guide |
+#### FREE TIER (Recommended - $0/month)
+**Deploy on Render's FREE tier using Web Service + GitHub Actions**
 
-### Deployment Path
+| Guide | Time | Cost |
+|-------|------|------|
+| [**FREE_TIER_QUICKSTART.md**](FREE_TIER_QUICKSTART.md) | 30 min | **$0** ✅ |
+| [**RENDER_FREE_TIER_GUIDE.md**](RENDER_FREE_TIER_GUIDE.md) | Detailed | **$0** ✅ |
+| [**CRON_VS_WEB_SERVICE_EXPLAINED.md**](CRON_VS_WEB_SERVICE_EXPLAINED.md) | Read | Understand why |
 
-1. **GitHub Setup** (10 min) → [GITHUB_SETUP.md](GITHUB_SETUP.md)
-   - Create GitHub repo
-   - Push project code
-   
-2. **Prepare Credentials** (10 min) → See below
-   - Get API keys
-   - Generate Gmail app password
-   
-3. **Deploy on Render** (15 min) → [RENDER_QUICKSTART.md](RENDER_QUICKSTART.md)
-   - Create cron job
-   - Add environment variables
-   - Deploy!
-   
-4. **Test & Verify** (5 min) → [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)
-   - Trigger job manually
-   - Verify email received
-   - Check logs
+**What you get:**
+- Web Service on Render (FREE tier)
+- GitHub Actions scheduler (FREE)
+- Automatic daily emails
+- $0 cost per month
+- Best value! 🎉
 
-**Total Time: 40 minutes to fully deployed!** ⏱️
+---
+
+#### PAID RENDER CRON JOB ($10+/month)
+**Use Render's built-in Cron Jobs (requires payment)**
+
+| Guide | Time | Cost |
+|-------|------|------|
+| [**RENDER_QUICKSTART.md**](RENDER_QUICKSTART.md) | 5 min | $10+/month |
+| [**STEP_BY_STEP_GUIDE.md**](STEP_BY_STEP_GUIDE.md) | 30 min | $10+/month |
+| [**DEPLOYMENT.md**](DEPLOYMENT.md) | Detailed | $10+/month |
+| [**DEPLOYMENT_CHECKLIST.md**](DEPLOYMENT_CHECKLIST.md) | Reference | $10+/month |
+
+**What you get:**
+- Render Cron Job (paid only)
+- Built-in scheduling
+- Simple one-step setup
+- $10+ cost per month
+
+---
+
+### 💡 Which Should You Choose?
+
+**Choose FREE TIER if:**
+- ✅ You want zero cost
+- ✅ You use GitHub (it's free anyway)
+- ✅ You're comfortable with external scheduler
+- ✅ You want to save $120/year
+
+**Choose PAID CRON if:**
+- ✅ You prefer all-in-one solution
+- ✅ You want absolute simplicity
+- ✅ Cost is not an issue
+- ✅ You don't use GitHub
+
+**RECOMMENDATION:** **Use FREE TIER!** Save money, same functionality. ✅
 
 ---
 

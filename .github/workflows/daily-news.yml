@@ -1,0 +1,72 @@
+name: Daily AI News Trigger
+
+# Trigger at 10 PM UTC every day
+# Adjust times in the cron expression as needed
+on:
+  schedule:
+    # Runs at 10:00 PM UTC daily
+    # Format: minute hour day month dayofweek
+    # 0 22 * * * = 10:00 PM UTC
+    # To run at different times, change the cron expression
+    # Examples:
+    # 0 2 * * * = 2:00 AM UTC (10:00 PM EST)
+    # 0 12 * * * = 12:00 PM UTC (8:00 AM EST)
+    # 0 0 * * * = 12:00 AM UTC (8:00 PM EST)
+    - cron: '0 22 * * *'
+  
+  # Allows you to manually trigger from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  trigger-news-update:
+    name: Trigger Daily News Update
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Checkout code (optional, for logging purposes)
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      # Step 2: Trigger the news update endpoint
+      - name: Trigger Daily News Update
+        run: |
+          # Replace with your actual Render service URL
+          # Format: https://your-service-name.onrender.com
+          SERVICE_URL="https://daily-ai-news.onrender.com"
+          
+          echo "🚀 Triggering news update at $SERVICE_URL/trigger-news"
+          
+          # Make POST request to trigger endpoint
+          RESPONSE=$(curl -s -w '\n%{http_code}' -X POST "$SERVICE_URL/trigger-news")
+          
+          # Extract status code (last line)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          
+          echo "Response Code: $HTTP_CODE"
+          echo "Response Body: $BODY"
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Daily news update triggered successfully!"
+          else
+            echo "⚠️ Warning: Unexpected response code $HTTP_CODE"
+            exit 1
+          fi
+      
+      # Step 3: Log success
+      - name: Log Success
+        if: success()
+        run: |
+          echo "✅ Daily news email should arrive soon!"
+          echo "Check your inbox for 'Daily AI & World News'"
+
+# Notifications (Optional)
+# GitHub sends notifications if this workflow fails
+# You can also add Slack, Discord, Email notifications here
+# See: https://github.com/actions/toolkit
+
+# Tips:
+# - View workflow runs in: GitHub Repo → Actions tab
+# - Manual trigger: Actions tab → "Daily AI News Trigger" → "Run workflow"
+# - View logs: Click the workflow run → See detailed logs
+# - Disable: Settings → Actions → Disable this workflow
