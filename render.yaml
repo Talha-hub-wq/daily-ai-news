@@ -1,0 +1,28 @@
+services:
+  - type: cron
+    name: daily-ai-news
+    runtime: python3
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app/main.py --run-once
+    schedule: "0 22 * * *"  # Daily at 10:00 PM UTC
+    envVars:
+      - key: OPENAI_API_KEY
+        scope: build
+      - key: NEWSAPI_KEY
+        scope: build
+      - key: EMAIL_SENDER
+        scope: build
+      - key: EMAIL_PASSWORD
+        scope: build
+      - key: EMAIL_RECIPIENT
+        scope: build
+      - key: SCHEDULE_TIME
+        value: "22:00"
+        scope: build
+      - key: SMTP_SERVER
+        value: "smtp.gmail.com"
+        scope: build
+      - key: SMTP_PORT
+        value: "587"
+        scope: build
