@@ -15,7 +15,7 @@ SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 
 # Scheduling
-SCHEDULE_TIME = os.getenv("SCHEDULE_TIME", "22:00")  # 10:00 PM in 24-hour format
+SCHEDULE_TIME = os.getenv("SCHEDULE_TIME", "18:10")  # 10:00 PM in 24-hour format
 
 # API Settings
 NEWS_LIMIT = 5
