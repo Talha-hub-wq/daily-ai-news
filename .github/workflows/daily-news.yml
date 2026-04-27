@@ -32,7 +32,7 @@ jobs:
         run: |
           # Replace with your actual Render service URL
           # Format: https://your-service-name.onrender.com
-          SERVICE_URL="https://daily-ai-news.onrender.com"
+          SERVICE_URL="https://daily-ai-news-merl.onrender.com"
           
           echo "🚀 Triggering news update at $SERVICE_URL/trigger-news"
           
