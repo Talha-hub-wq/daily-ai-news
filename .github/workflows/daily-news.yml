@@ -30,26 +30,32 @@ jobs:
       # Step 2: Trigger the news update endpoint
       - name: Trigger Daily News Update
         run: |
-          # Replace with your actual Render service URL
-          # Format: https://your-service-name.onrender.com
           SERVICE_URL="https://daily-ai-news-merl.onrender.com"
           
           echo "🚀 Triggering news update at $SERVICE_URL/trigger-news"
+          echo "Current time: $(date)"
           
-          # Make POST request to trigger endpoint
-          RESPONSE=$(curl -s -w '\n%{http_code}' -X POST "$SERVICE_URL/trigger-news")
+          # Make POST request with timeout and retry logic
+          RESPONSE=$(curl -s -w '\n%{http_code}' -X POST "$SERVICE_URL/trigger-news" \
+            --connect-timeout 10 \
+            --max-time 30 \
+            -H "Content-Type: application/json" 2>&1)
           
-          # Extract status code (last line)
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | head -n-1)
           
           echo "Response Code: $HTTP_CODE"
-          echo "Response Body: $BODY"
+          echo "Response Body:"
+          echo "$BODY"
           
           if [ "$HTTP_CODE" = "200" ]; then
             echo "✅ Daily news update triggered successfully!"
           else
-            echo "⚠️ Warning: Unexpected response code $HTTP_CODE"
+            echo "❌ Error: HTTP Code $HTTP_CODE"
+            echo "This usually means:"
+            echo "  - Service is down/sleeping"
+            echo "  - Network timeout"
+            echo "  - POST endpoint error"
             exit 1
           fi
       
