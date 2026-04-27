@@ -12,7 +12,7 @@ on:
     # 0 2 * * * = 2:00 AM UTC (10:00 PM EST)
     # 0 12 * * * = 12:00 PM UTC (8:00 AM EST)
     # 0 0 * * * = 12:00 AM UTC (8:00 PM EST)
-    - cron: '12 10 * * *'
+    - cron: '15 12 * * *'
   
   # Allows you to manually trigger from GitHub Actions tab
   workflow_dispatch:
