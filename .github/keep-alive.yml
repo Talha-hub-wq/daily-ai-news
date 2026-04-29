@@ -2,23 +2,59 @@ name: Keep Alive Render App
 
 on:
   schedule:
-    - cron: "*/5 * * * *"   # every 5 minutes
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Ping Render App
+      - name: Ping Render App with Retry
         run: |
           URL="https://daily-ai-news-merl.onrender.com/"
 
-          echo "🔄 Pinging $URL"
-          curl -s $URL > /dev/null
+          for i in 1 2 3; do
+            echo "Attempt $i..."
 
-          echo "✅ App pinged successfully"
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              --connect-timeout 10 \
+              --max-time 30 \
+              $URL)
 
-          on:
-  schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch:
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Success"
+              exit 0
+            fi
+
+            echo "❌ Failed (status: $STATUS), retrying..."
+            sleep 15
+          done
+
+          echo "🚨 All retries failed"
+          exit 1
+
+# name: Keep Alive Render App
+
+# on:
+#   schedule:
+#     - cron: "*/5 * * * *"   # every 5 minutes
+
+# jobs:
+#   ping:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Ping Render App
+#         run: |
+#           URL="https://daily-ai-news-merl.onrender.com/"
+
+#           echo "🔄 Pinging $URL"
+#           curl -s $URL > /dev/null
+
+#           echo "✅ App pinged successfully"
+
+#           on:
+#   schedule:
+#     - cron: "*/5 * * * *"
+#   workflow_dispatch:
