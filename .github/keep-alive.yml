@@ -17,3 +17,8 @@ jobs:
           curl -s $URL > /dev/null
 
           echo "✅ App pinged successfully"
+
+          on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
