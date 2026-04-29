@@ -1,60 +1,88 @@
-name: Keep Alive Render App
+- name: Trigger Daily News Update with Retry
+  run: |
+    SERVICE_URL="https://daily-ai-news-merl.onrender.com"
 
-on:
-  schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch:
+    echo "⏳ Waiting for app to wake up..."
+    sleep 20
 
-jobs:
-  ping:
-    runs-on: ubuntu-latest
+    for i in 1 2 3; do
+      echo "Attempt $i..."
 
-    steps:
-      - name: Ping Render App with Retry
-        run: |
-          URL="https://daily-ai-news-merl.onrender.com/"
+      RESPONSE=$(curl -s -w '\n%{http_code}' -X POST "$SERVICE_URL/trigger-news" \
+        --connect-timeout 10 \
+        --max-time 60)
 
-          for i in 1 2 3; do
-            echo "Attempt $i..."
+      HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
 
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              --connect-timeout 10 \
-              --max-time 30 \
-              $URL)
+      if [ "$HTTP_CODE" = "200" ]; then
+        echo "✅ Success"
+        exit 0
+      fi
 
-            if [ "$STATUS" = "200" ]; then
-              echo "✅ Success"
-              exit 0
-            fi
+      echo "❌ Failed ($HTTP_CODE), retrying..."
+      sleep 20
+    done
 
-            echo "❌ Failed (status: $STATUS), retrying..."
-            sleep 15
-          done
-
-          echo "🚨 All retries failed"
-          exit 1
+    echo "🚨 All retries failed"
+    exit 1
 
 # name: Keep Alive Render App
 
 # on:
 #   schedule:
-#     - cron: "*/5 * * * *"   # every 5 minutes
+#     - cron: "*/5 * * * *"
+#   workflow_dispatch:
 
 # jobs:
 #   ping:
 #     runs-on: ubuntu-latest
 
 #     steps:
-#       - name: Ping Render App
+#       - name: Ping Render App with Retry
 #         run: |
 #           URL="https://daily-ai-news-merl.onrender.com/"
 
-#           echo "🔄 Pinging $URL"
-#           curl -s $URL > /dev/null
+#           for i in 1 2 3; do
+#             echo "Attempt $i..."
 
-#           echo "✅ App pinged successfully"
+#             STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+#               --connect-timeout 10 \
+#               --max-time 30 \
+#               $URL)
 
-#           on:
-#   schedule:
-#     - cron: "*/5 * * * *"
-#   workflow_dispatch:
+#             if [ "$STATUS" = "200" ]; then
+#               echo "✅ Success"
+#               exit 0
+#             fi
+
+#             echo "❌ Failed (status: $STATUS), retrying..."
+#             sleep 15
+#           done
+
+#           echo "🚨 All retries failed"
+#           exit 1
+
+# # name: Keep Alive Render App
+
+# # on:
+# #   schedule:
+# #     - cron: "*/5 * * * *"   # every 5 minutes
+
+# # jobs:
+# #   ping:
+# #     runs-on: ubuntu-latest
+
+# #     steps:
+# #       - name: Ping Render App
+# #         run: |
+# #           URL="https://daily-ai-news-merl.onrender.com/"
+
+# #           echo "🔄 Pinging $URL"
+# #           curl -s $URL > /dev/null
+
+# #           echo "✅ App pinged successfully"
+
+# #           on:
+# #   schedule:
+# #     - cron: "*/5 * * * *"
+# #   workflow_dispatch:
