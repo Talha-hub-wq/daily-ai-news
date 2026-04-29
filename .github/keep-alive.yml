@@ -10,7 +10,7 @@
 
       RESPONSE=$(curl -s -w '\n%{http_code}' -X POST "$SERVICE_URL/trigger-news" \
         --connect-timeout 10 \
-        --max-time 60)
+        --max-time 90)
 
       HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
 
