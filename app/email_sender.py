@@ -21,20 +21,24 @@ class EmailSender:
         recipient: str,
         ai_news: List[Dict],
         world_news: List[Dict],
-        html_template: str
+        twitter_news: List[Dict] = None,
+        html_template: str = None
     ) -> bool:
         """Send formatted news email."""
         try:
+            if twitter_news is None:
+                twitter_news = []
+                
             # Read template
             with open(html_template, 'r', encoding='utf-8') as f:
                 template = f.read()
             
             # Build email content
-            html_content = self._build_html_content(template, ai_news, world_news)
+            html_content = self._build_html_content(template, ai_news, world_news, twitter_news)
             
             # Create message
             message = MIMEMultipart("alternative")
-            message["Subject"] = "Daily AI & World News"
+            message["Subject"] = "Daily AI & World News & Twitter Trends"
             message["From"] = self.sender
             message["To"] = recipient
             
@@ -47,7 +51,6 @@ class EmailSender:
             
             logger.info(f"Email sent successfully to {recipient}")
             return True
-        
         except FileNotFoundError:
             logger.error(f"Email template not found: {html_template}")
             return False
@@ -59,7 +62,8 @@ class EmailSender:
         self,
         template: str,
         ai_news: List[Dict],
-        world_news: List[Dict]
+        world_news: List[Dict],
+        twitter_news: List[Dict] = None
     ) -> str:
         """Build HTML email content from template and news data."""
         
@@ -110,6 +114,31 @@ class EmailSender:
         # Replace placeholders
         html_content = template.replace("{{ AI_NEWS }}", ai_html)
         html_content = html_content.replace("{{ WORLD_NEWS }}", world_html)
+        
+        # Build Twitter news section
+        twitter_html = ""
+        if twitter_news:
+            for i, tweet in enumerate(twitter_news, 1):
+                twitter_html += f"""
+            <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #e0e0e0;">
+                <h4 style="margin: 0 0 10px 0; color: #1a73e8;">
+                    {i}. {tweet.get('title', 'No Title')}
+                </h4>
+                <p style="margin: 8px 0; color: #555; font-size: 14px;">
+                    {tweet.get('summary', tweet.get('content', 'No content available'))}
+                </p>
+                <p style="margin: 8px 0; font-size: 12px;">
+                    <strong>Author:</strong> @{tweet.get('author', 'Unknown')} | <strong>Likes:</strong> {tweet.get('likes', 0)}
+                </p>
+                <p style="margin: 0; font-size: 12px;">
+                    <a href="{tweet.get('url', '#')}" style="color: #1a73e8; text-decoration: none;">
+                        View on Twitter →
+                    </a>
+                </p>
+            </div>
+            """
+        
+        html_content = html_content.replace("{{ TWITTER_NEWS }}", twitter_html)
         
         return html_content
     

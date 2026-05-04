@@ -27,6 +27,7 @@ from app.news_fetcher import NewsFetcher
 from app.summarizer import NewsSummarizer
 from app.email_sender import EmailSender
 from app.scheduler import NewsScheduler
+from app.twitter_scraper import get_top_twitter_news
 
 # -------------------- LOGGING --------------------
 
@@ -53,13 +54,18 @@ def send_daily_news():
         logger.info("=" * 50)
         logger.info("Starting daily news update process...")
         logger.info("=" * 50)
-
+        logger.info ('real time data and ai news')
         # Step 1: Fetch news
         fetcher = NewsFetcher(api_key=NEWSAPI_KEY)
         ai_news = fetcher.fetch_ai_news()
         world_news = fetcher.fetch_world_news()
+        
+        # Step 1b: Fetch Twitter news
+        logger.info("Fetching Twitter news...")
+        twitter_news = get_top_twitter_news("AI tools OR AI news", 5)
+        logger.info(f"Fetched {len(twitter_news)} Twitter articles")
 
-        logger.info(f"Fetched {len(ai_news)} AI news and {len(world_news)} world news")
+        logger.info(f"Fetched {len(ai_news)} AI news, {len(world_news)} world news, {len(twitter_news)} Twitter news")
 
         if not ai_news and not world_news:
             logger.warning("No news found. Email not sent.")
@@ -69,6 +75,7 @@ def send_daily_news():
         summarizer = NewsSummarizer(api_key=OPENAI_API_KEY)
         ai_news = summarizer.summarize_articles(ai_news)
         world_news = summarizer.summarize_articles(world_news)
+        twitter_news = summarizer.summarize_articles(twitter_news)
 
         logger.info("Articles summarized")
 
@@ -86,6 +93,7 @@ def send_daily_news():
             recipient=EMAIL_RECIPIENT,
             ai_news=ai_news,
             world_news=world_news,
+            twitter_news=twitter_news,
             html_template=str(template_path)
         )
 
