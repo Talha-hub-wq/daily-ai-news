@@ -27,7 +27,8 @@ from app.news_fetcher import NewsFetcher
 from app.summarizer import NewsSummarizer
 from app.email_sender import EmailSender
 from app.scheduler import NewsScheduler
-from app.twitter_scraper import get_top_twitter_news
+from app.hackernews_scraper import get_hackernews_tech_stories
+from app.nitter_scraper import get_nitter_tweets
 
 # -------------------- LOGGING --------------------
 
@@ -60,12 +61,17 @@ def send_daily_news():
         ai_news = fetcher.fetch_ai_news()
         world_news = fetcher.fetch_world_news()
         
-        # Step 1b: Fetch Twitter news
-        logger.info("Fetching Twitter news...")
-        twitter_news = get_top_twitter_news("AI tools OR AI news", 5)
-        logger.info(f"Fetched {len(twitter_news)} Twitter articles")
+        # Step 1b: Fetch HackerNews tech stories
+        logger.info("Fetching HackerNews tech stories...")
+        hackernews = get_hackernews_tech_stories(5)
+        logger.info(f"Fetched {len(hackernews)} HackerNews stories")
+        
+        # Step 1c: Fetch Nitter tweets
+        logger.info("Fetching Nitter tweets...")
+        nitter_tweets = get_nitter_tweets("AI tools OR machine learning", 5)
+        logger.info(f"Fetched {len(nitter_tweets)} Nitter tweets")
 
-        logger.info(f"Fetched {len(ai_news)} AI news, {len(world_news)} world news, {len(twitter_news)} Twitter news")
+        logger.info(f"Fetched {len(ai_news)} AI news, {len(world_news)} world news, {len(hackernews)} HackerNews stories, {len(nitter_tweets)} Nitter tweets")
 
         if not ai_news and not world_news:
             logger.warning("No news found. Email not sent.")
@@ -75,7 +81,8 @@ def send_daily_news():
         summarizer = NewsSummarizer(api_key=OPENAI_API_KEY)
         ai_news = summarizer.summarize_articles(ai_news)
         world_news = summarizer.summarize_articles(world_news)
-        twitter_news = summarizer.summarize_articles(twitter_news)
+        hackernews = summarizer.summarize_articles(hackernews)
+        nitter_tweets = summarizer.summarize_articles(nitter_tweets)
 
         logger.info("Articles summarized")
 
@@ -93,7 +100,8 @@ def send_daily_news():
             recipient=EMAIL_RECIPIENT,
             ai_news=ai_news,
             world_news=world_news,
-            twitter_news=twitter_news,
+            hackernews=hackernews,
+            nitter_tweets=nitter_tweets,
             html_template=str(template_path)
         )
 
