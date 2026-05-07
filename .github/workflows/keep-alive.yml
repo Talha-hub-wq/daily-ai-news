@@ -3,8 +3,8 @@ name: Keep Render Service Alive
 # Run every 30 minutes to prevent Render from sleeping
 on:
   schedule:
-    # Every 30 minutes
-    - cron: '*/30 * * * *'
+    # Every 1 minute (GitHub Actions minimum)
+    - cron: '* * * * *'
   
   workflow_dispatch:  # Manual trigger option
 
