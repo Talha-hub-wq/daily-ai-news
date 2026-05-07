@@ -1,0 +1,36 @@
+name: Keep Render Service Alive
+
+# Run every 30 minutes to prevent Render from sleeping
+on:
+  schedule:
+    # Every 30 minutes
+    - cron: '*/30 * * * *'
+  
+  workflow_dispatch:  # Manual trigger option
+
+jobs:
+  keep-alive:
+    name: Keep Service Alive
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Health Check
+        run: |
+          SERVICE_URL="https://daily-ai-news-merl.onrender.com"
+          
+          echo "🔄 Pinging health endpoint..."
+          echo "URL: $SERVICE_URL/"
+          
+          RESPONSE=$(curl -s -w '\n%{http_code}' -X GET "$SERVICE_URL/")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          
+          echo "Response Code: $HTTP_CODE"
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Service is alive!"
+          else
+            echo "⚠️ Warning: HTTP Code $HTTP_CODE"
+            exit 1
+          fi
