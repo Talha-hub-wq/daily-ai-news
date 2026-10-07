@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 from flask import Flask, jsonify
 import threading
+import hmac
+from flask import request
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -12,23 +14,29 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 os.makedirs('logs', exist_ok=True)
 
 from config.settings import (
-    OPENAI_API_KEY,
+    # GOOGLE_API_KEY,
+    # GOOGLE_CSE_ID,
     EMAIL_SENDER,
     EMAIL_PASSWORD,
     EMAIL_RECIPIENT,
     SMTP_SERVER,
     SMTP_PORT,
     SCHEDULE_TIME,
+    SCHEDULE_TIMEZONE,
+    TRIGGER_TOKEN,
+    LLM_PROVIDER,
+    LLM_MODEL,
     NEWSAPI_KEY,
     validate_config
 )
-
+# from app.google_search import google_search
 from app.news_fetcher import NewsFetcher
 from app.summarizer import NewsSummarizer
 from app.email_sender import EmailSender
 from app.scheduler import NewsScheduler
 from app.hackernews_scraper import get_hackernews_tech_stories
 from app.nitter_scraper import get_nitter_tweets
+from app.twitter_scraper import get_top_twitter_news
 
 # -------------------- LOGGING --------------------
 
@@ -56,11 +64,29 @@ def send_daily_news():
         logger.info("Starting daily news update process...")
         logger.info("=" * 50)
         logger.info ('real time data and ai news')
+        summarizer = NewsSummarizer()
+        summarizer.check_ready()
         # Step 1: Fetch news
         fetcher = NewsFetcher(api_key=NEWSAPI_KEY)
         ai_news = fetcher.fetch_ai_news()
         world_news = fetcher.fetch_world_news()
-        
+
+        # # Step 1a: Fetch Google Search news
+        # logger.info("Fetching Google Search news...")
+        # ai_news = google_search("AI tools OR AI news", 5)
+        # logger.info(f"Fetched {len(ai_news)} Google Search news")
+
+        # # Step 1a: Fetch Google Search news
+        # logger.info("Fetching Google world news...")
+        # world_news  = google_search("latest world news 2026", 5)
+        # logger.info(f"Fetched {len(world_news)} Google Search news") 
+
+        # # Step 1a: Fetch Google Search news
+        # logger.info("Fetching twitter  news...")
+        # twitter_news  = google_search("site:twitter.com AI OR ChatGPT", 5)
+        # logger.info(f"Fetched {len(twitter_news)} Google Search news")
+
+
         # Step 1b: Fetch HackerNews tech stories
         logger.info("Fetching HackerNews tech stories...")
         hackernews = get_hackernews_tech_stories(5)
@@ -69,21 +95,21 @@ def send_daily_news():
         # Step 1c: Fetch Nitter tweets
         logger.info("Fetching Nitter tweets...")
         nitter_tweets = get_nitter_tweets("AI tools OR machine learning", 5)
-        logger.info(f"Fetched {len(nitter_tweets)} Nitter tweets")
+        twitter_news = get_top_twitter_news("AI OR ChatGPT OR OpenAI lang:en min_faves:50", 5)
+        logger.info(f"Fetched {len(twitter_news)} Twitter news")
 
-        logger.info(f"Fetched {len(ai_news)} AI news, {len(world_news)} world news, {len(hackernews)} HackerNews stories, {len(nitter_tweets)} Nitter tweets")
+        logger.info(f"Fetched {len(ai_news)} AI news, {len(world_news)} world news, {len(hackernews)} HackerNews stories, {len(twitter_news)} Twitter news")
 
         if not ai_news and not world_news:
             logger.warning("No news found. Email not sent.")
             return False
 
         # Step 2: Summarize
-        summarizer = NewsSummarizer(api_key=OPENAI_API_KEY)
         ai_news = summarizer.summarize_articles(ai_news)
         world_news = summarizer.summarize_articles(world_news)
         hackernews = summarizer.summarize_articles(hackernews)
         nitter_tweets = summarizer.summarize_articles(nitter_tweets)
-
+        twitter_news = summarizer.summarize_articles(twitter_news)
         logger.info("Articles summarized")
 
         # Step 3: Send Email
@@ -102,6 +128,7 @@ def send_daily_news():
             world_news=world_news,
             hackernews=hackernews,
             nitter_tweets=nitter_tweets,
+            # twitter_news=twitter_news,
             html_template=str(template_path)
         )
 
@@ -125,8 +152,8 @@ def start_scheduler():
     """Run scheduler in background."""
     try:
         scheduler = NewsScheduler()
-        scheduler.schedule_daily(SCHEDULE_TIME, send_daily_news)
-        logger.info(f"Scheduler set for daily run at {SCHEDULE_TIME}")
+        scheduler.schedule_daily(SCHEDULE_TIME, send_daily_news, SCHEDULE_TIMEZONE)
+        logger.info(f"Scheduler set for daily run at {SCHEDULE_TIME} ({SCHEDULE_TIMEZONE})")
         scheduler.start()
     except Exception as e:
         logger.error(f"Scheduler error: {e}", exc_info=True)
@@ -139,12 +166,17 @@ def health_check():
     return jsonify({
         "status": "healthy",
         "service": "Daily AI News Automation",
-        "next_run": f"Daily at {SCHEDULE_TIME} (server local time)"
+        "next_run": f"Daily at {SCHEDULE_TIME} ({SCHEDULE_TIMEZONE})",
+        "llm_provider": LLM_PROVIDER,
+        "llm_model": LLM_MODEL,
+        "readiness_checked": False
     }), 200
 
 
 @app.route('/trigger-news', methods=['POST'])
 def trigger_news_endpoint():
+    if not authorized_request():
+        return jsonify({"status": "unauthorized"}), 401
     try:
         logger.info("Manual trigger via API")
         success = send_daily_news()
@@ -161,6 +193,8 @@ def trigger_news_endpoint():
 
 @app.route('/logs', methods=['GET'])
 def get_logs():
+    if not authorized_request():
+        return jsonify({"status": "unauthorized"}), 401
     try:
         log_file = 'logs/app.log'
         if os.path.exists(log_file):
@@ -174,6 +208,13 @@ def get_logs():
 
 # -------------------- MAIN --------------------
 
+def authorized_request():
+    """Webhook/log access is disabled until a private trigger token is set."""
+    expected = f"Bearer {TRIGGER_TOKEN}"
+    return bool(TRIGGER_TOKEN) and hmac.compare_digest(
+        request.headers.get("Authorization", "").encode("utf-8"), expected.encode("utf-8")
+    )
+
 def main():
     try:
         logger.info("Validating configuration...")
@@ -182,9 +223,14 @@ def main():
 
         # CLI MODE
         if len(sys.argv) > 1:
+            if sys.argv[1] == "--check-services":
+                NewsSummarizer().check_ready()
+                logger.info("Ollama readiness check passed; no news fetched or email sent")
+                return
             if sys.argv[1] == "--run-once":
                 logger.info("Running in test mode...")
-                send_daily_news()
+                if not send_daily_news():
+                    sys.exit(1)
                 return
 
         # START SCHEDULER THREAD
@@ -206,227 +252,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# import logging
-# import sys
-# import os
-# from pathlib import Path
-# from flask import Flask, jsonify
-# import threading
-# import time
-
-# # Add parent directory to path
-# sys.path.insert(0, str(Path(__file__).parent.parent))
-
-# # Create logs directory BEFORE setting up logging
-# os.makedirs('logs', exist_ok=True)
-
-# from config.settings import (
-#     OPENAI_API_KEY,
-#     EMAIL_SENDER,
-#     EMAIL_PASSWORD,
-#     EMAIL_RECIPIENT,
-#     SMTP_SERVER,
-#     SMTP_PORT,
-#     SCHEDULE_TIME,
-#     NEWSAPI_KEY,
-#     validate_config
-# )
-# from app.news_fetcher import NewsFetcher
-# from app.summarizer import NewsSummarizer
-# from app.email_sender import EmailSender
-# from app.scheduler import NewsScheduler
-
-# # Setup logging
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-#     handlers=[
-#         logging.FileHandler('logs/app.log'),
-#         logging.StreamHandler()
-#     ]
-# )
-
-# logger = logging.getLogger(__name__)
-
-# # Initialize Flask app
-# app = Flask(__name__)
-
-
-# def send_daily_news():
-#     """Main function to fetch news, summarize, and send email."""
-#     try:
-#         logger.info("=" * 50)
-#         logger.info("Starting daily news update process...")
-#         logger.info("=" * 50)
-        
-#         # Step 1: Fetch news
-#         logger.info("Step 1: Fetching news...")
-#         fetcher = NewsFetcher(api_key=NEWSAPI_KEY)
-        
-#         ai_news = fetcher.fetch_ai_news()
-#         world_news = fetcher.fetch_world_news()
-        
-#         logger.info(f"Fetched {len(ai_news)} AI news and {len(world_news)} world news")
-        
-#         if not ai_news and not world_news:
-#             logger.warning("No news found. Email not sent.")
-#             return False
-        
-#         # Step 2: Summarize news
-#         logger.info("Step 2: Summarizing articles...")
-#         summarizer = NewsSummarizer(api_key=OPENAI_API_KEY)
-        
-#         ai_news = summarizer.summarize_articles(ai_news)
-#         world_news = summarizer.summarize_articles(world_news)
-        
-#         logger.info("Articles summarized")
-        
-#         # Step 3: Send email
-#         logger.info("Step 3: Sending email...")
-#         email_sender = EmailSender(
-#             sender=EMAIL_SENDER,
-#             password=EMAIL_PASSWORD,
-#             smtp_server=SMTP_SERVER,
-#             smtp_port=SMTP_PORT
-#         )
-        
-#         template_path = Path(__file__).parent.parent / "templates" / "email_template.html"
-        
-#         success = email_sender.send_news_email(
-#             recipient=EMAIL_RECIPIENT,
-#             ai_news=ai_news,
-#             world_news=world_news,
-#             html_template=str(template_path)
-#         )
-        
-#         if success:
-#             logger.info("✓ Daily news email sent successfully")
-#         else:
-#             logger.error("✗ Failed to send email")
-#             return False
-        
-#         logger.info("=" * 50)
-#         logger.info("Daily news update completed successfully")
-#         logger.info("=" * 50)
-        
-#         return True
-    
-#     except Exception as e:
-#         logger.error(f"Error in send_daily_news: {e}", exc_info=True)
-#         return False
-
-
-# def main():
-#     """Main entry point."""
-#     try:
-#         # Validate configuration
-#         logger.info("Validating configuration...")
-#         validate_config()
-#         logger.info("✓ Configuration validated")
-        
-#         # Check for command line arguments
-#         if len(sys.argv) > 1:
-#             if sys.argv[1] == "--run-once":
-#                 logger.info("Running news update once (test mode)...")
-#                 send_daily_news()
-#                 return
-#             elif sys.argv[1] == "--help":
-#                 print("Usage: python main.py [OPTIONS]")
-#                 print("Options:")
-#                 print("  --run-once    Run the news update once (for testing)")
-#                 print("  --help        Show this help message")
-#                 print("\nWithout options, starts Flask web service (for Render)")
-#                 return
-        
-#         # Start Flask web service (for Render deployment)
-#         logger.info("Starting Flask web service on port 5000...")
-#         logger.info("Available endpoints:")
-#         logger.info("  GET  / → Health check")
-#         logger.info("  POST /trigger-news → Trigger news update")
-        
-#         port = int(os.getenv("PORT", 5000))
-#         app.run(host="0.0.0.0", port=port, debug=False)
-    
-#     except ValueError as e:
-#         logger.error(f"Configuration error: {e}")
-#         print(f"\n❌ Configuration Error: {e}")
-#         print("\nPlease set up your environment variables. See README.md for instructions.")
-#         sys.exit(1)
-#     except KeyboardInterrupt:
-#         logger.info("Application stopped by user")
-#         print("\n👋 Application stopped")
-#     except Exception as e:
-#         logger.error(f"Fatal error: {e}", exc_info=True)
-#         print(f"\n❌ Error: {e}")
-#         sys.exit(1)
-
-
-# # Flask Routes
-
-# @app.route('/', methods=['GET'])
-# def health_check():
-#     """Health check endpoint - used by Render to verify service is running."""
-#     return jsonify({
-#         "status": "healthy",
-#         "service": "Daily AI News Automation",
-#         "version": "1.0",
-#         "next_run": f"Daily at {SCHEDULE_TIME} UTC"
-#     }), 200
-
-
-# @app.route('/trigger-news', methods=['POST'])
-# def trigger_news_endpoint():
-#     """Endpoint to trigger news update via HTTP request."""
-#     try:
-#         logger.info("News update triggered via HTTP endpoint")
-#         success = send_daily_news()
-        
-#         if success:
-#             return jsonify({
-#                 "status": "success",
-#                 "message": "News email sent successfully"
-#             }), 200
-#         else:
-#             return jsonify({
-#                 "status": "error",
-#                 "message": "Failed to send news email"
-#             }), 500
-    
-#     except Exception as e:
-#         logger.error(f"Error in trigger endpoint: {e}", exc_info=True)
-#         return jsonify({
-#             "status": "error",
-#             "message": str(e)
-#         }), 500
-
-
-# @app.route('/logs', methods=['GET'])
-# def get_logs():
-#     """Endpoint to view recent logs."""
-#     try:
-#         log_file = 'logs/app.log'
-#         if os.path.exists(log_file):
-#             with open(log_file, 'r') as f:
-#                 logs = f.readlines()
-#             # Return last 50 lines
-#             recent_logs = logs[-50:]
-#             return jsonify({
-#                 "status": "success",
-#                 "logs": recent_logs
-#             }), 200
-#         else:
-#             return jsonify({
-#                 "status": "error",
-#                 "message": "Log file not found"
-#             }), 404
-#     except Exception as e:
-#         return jsonify({
-#             "status": "error",
-#             "message": str(e)
-#         }), 500
-
-
-# if __name__ == "__main__":
-#     main()

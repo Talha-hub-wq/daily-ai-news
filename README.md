@@ -1,408 +1,179 @@
-# Daily AI & World News Automation Agents
+# Daily AI & World News - Local Ollama Agent
 
-An automated system that fetches the latest AI and world news daily, summarizes them using OpenAI, and sends a beautifully formatted email at 10:00 PM every day.
+A Python news pipeline that collects AI/world articles and supplementary tech/social stories, summarizes them on your computer using Ollama, and sends an HTML email digest.
 
-> 🚀 **Ready to deploy?** See [DEPLOYMENT GUIDES](#-deployment-guides) below for Render, GitHub, and complete setup instructions.
+**Active branch:** `ollama-with-AI-News-Agent`. The summarizer uses the native Ollama API. No OpenAI SDK, account, or API key is required.
 
 ## Features
 
-✅ **Automated Daily News Delivery** - Sends curated news every day at 10:00 PM  
-✅ **AI News Focus** - Top 5 latest AI tools, products, and advancements  
-✅ **World News** - Top 5 global news updates  
-✅ **Smart Summarization** - Uses OpenAI GPT to create 2-3 sentence summaries  
-✅ **Duplicate Prevention** - Removes duplicate articles  
-✅ **HTML Email** - Professional, responsive email design  
-✅ **Error Handling** - Graceful fallbacks and retry logic  
-✅ **Logging** - Detailed logs for debugging  
+- Up to five AI and five world articles from NewsAPI, with title deduplication.
+- Hacker News and Nitter sections in the digest.
+- Local summaries using your installed `qwen3:8b` model by default.
+- Configurable provider URL, model, timeout, output token budget, and temperature.
+- Source-text fallback if inference fails; no cloud-model fallback.
+- SMTP delivery, daily scheduling, one-shot mode, and Flask trigger/log endpoints.
+- Optional Twitter collection: unavailable `snscrape` returns an empty list instead of blocking startup. That separate Twitter list is not currently rendered in the email.
 
-## Project Structure
+## Setup on Windows
 
-```
-daily AI news/
-├── app/
-│   ├── main.py              # Entry point and scheduler setup
-│   ├── news_fetcher.py      # Fetches news from APIs
-│   ├── summarizer.py        # Summarizes with OpenAI
-│   ├── email_sender.py      # Sends HTML emails
-│   └── scheduler.py         # Handles daily scheduling
-├── config/
-│   └── settings.py          # Configuration and environment variables
-├── templates/
-│   └── email_template.html  # HTML email template
-├── logs/                    # Auto-created, stores app.log
-├── requirements.txt         # Python dependencies
-├── .env                     # Environment variables (create this)
-└── README.md               # This file
+1. Install/start [Ollama](https://ollama.com/download). This workspace already has Ollama and `qwen3:8b`; another machine must install/pull its selected model.
+2. Check the installed models:
+
+```powershell
+ollama list
+# Only needed if this model is not installed:
+ollama pull qwen3:8b
 ```
 
-## 🚀 Deployment Guides
+3. Install the Python dependencies in a project environment:
 
-### ⭐ CHOOSE YOUR DEPLOYMENT METHOD
-
-#### FREE TIER (Recommended - $0/month)
-**Deploy on Render's FREE tier using Web Service + GitHub Actions**
-
-| Guide | Time | Cost |
-|-------|------|------|
-| [**FREE_TIER_QUICKSTART.md**](FREE_TIER_QUICKSTART.md) | 30 min | **$0** ✅ |
-| [**RENDER_FREE_TIER_GUIDE.md**](RENDER_FREE_TIER_GUIDE.md) | Detailed | **$0** ✅ |
-| [**CRON_VS_WEB_SERVICE_EXPLAINED.md**](CRON_VS_WEB_SERVICE_EXPLAINED.md) | Read | Understand why |
-
-**What you get:**
-- Web Service on Render (FREE tier)
-- GitHub Actions scheduler (FREE)
-- Automatic daily emails
-- $0 cost per month
-- Best value! 🎉
-
----
-
-#### PAID RENDER CRON JOB ($10+/month)
-**Use Render's built-in Cron Jobs (requires payment)**
-
-| Guide | Time | Cost |
-|-------|------|------|
-| [**RENDER_QUICKSTART.md**](RENDER_QUICKSTART.md) | 5 min | $10+/month |
-| [**STEP_BY_STEP_GUIDE.md**](STEP_BY_STEP_GUIDE.md) | 30 min | $10+/month |
-| [**DEPLOYMENT.md**](DEPLOYMENT.md) | Detailed | $10+/month |
-| [**DEPLOYMENT_CHECKLIST.md**](DEPLOYMENT_CHECKLIST.md) | Reference | $10+/month |
-
-**What you get:**
-- Render Cron Job (paid only)
-- Built-in scheduling
-- Simple one-step setup
-- $10+ cost per month
-
----
-
-### 💡 Which Should You Choose?
-
-**Choose FREE TIER if:**
-- ✅ You want zero cost
-- ✅ You use GitHub (it's free anyway)
-- ✅ You're comfortable with external scheduler
-- ✅ You want to save $120/year
-
-**Choose PAID CRON if:**
-- ✅ You prefer all-in-one solution
-- ✅ You want absolute simplicity
-- ✅ Cost is not an issue
-- ✅ You don't use GitHub
-
-**RECOMMENDATION:** **Use FREE TIER!** Save money, same functionality. ✅
-
----
-
-## Setup Instructions
-
-### 1. Prerequisites
-
-- Python 3.8+
-- Gmail account (for SMTP) or another email service
-- OpenAI API key
-- NewsAPI key (free tier available)
-
-### 2. Install Dependencies
-
-```bash
-pip install -r requirements.txt
+```powershell
+Set-Location 'D:\daily AI news'
+python -m venv venv
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-### 3. Get API Keys
+Gunicorn is for Linux hosting. The local Windows app starts with Python/Flask.
 
-#### NewsAPI Key (Free)
-1. Visit [https://newsapi.org](https://newsapi.org)
-2. Click "Get API Key"
-3. Sign up with email
-4. Copy your API key
+4. Create `.env` from [.env.example](.env.example) only if you do not already have a configured `.env`. Set NewsAPI and SMTP credentials privately. The migration preserves existing news/email values.
 
-#### OpenAI API Key
-1. Visit [https://platform.openai.com/account/api-keys](https://platform.openai.com/account/api-keys)
-2. Click "Create new secret key"
-3. Copy the key (you won't see it again)
+```dotenv
+LLM_PROVIDER=ollama
+LLM_BASE_URL=http://127.0.0.1:11434
+LLM_MODEL=qwen3:8b
+LLM_TIMEOUT=120
+LLM_MAX_TOKENS=160
+LLM_TEMPERATURE=0.3
 
-#### Gmail Setup (SMTP)
-1. Enable 2-Step Verification in your Google Account
-2. Generate an App Password:
-   - Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-   - Select "Mail" and "Windows Computer"
-   - Copy the 16-character password
-
-### 4. Create .env File
-
-Create a `.env` file in the project root directory with your credentials:
-
-```env
-# API Keys
-OPENAI_API_KEY=sk-your-openai-key-here
-NEWSAPI_KEY=your-newsapi-key-here
-
-# Email Configuration (Gmail)
-EMAIL_SENDER=your-email@gmail.com
-EMAIL_PASSWORD=your-16-char-app-password
+NEWSAPI_KEY=your_newsapi_key
+EMAIL_SENDER=sender@example.com
+EMAIL_PASSWORD=your_smtp_password
 EMAIL_RECIPIENT=recipient@example.com
-
-# SMTP Settings (Gmail defaults)
 SMTP_SERVER=smtp.gmail.com
 SMTP_PORT=587
-
-# Scheduling (24-hour format)
 SCHEDULE_TIME=22:00
+SCHEDULE_TIMEZONE=Asia/Karachi
 ```
 
-⚠️ **Important**: Never commit `.env` to version control!
+Choose a model listed by `ollama list`. Keep the URL pointed at your Ollama server; it is a server base URL, without `/api/chat`. Restart the Python process after configuration changes. Values exported in the process environment take precedence over `.env`.
 
-### 5. Verify Setup
+5. Validate configuration without sending an email:
 
-Run the app once to test:
-
-```bash
-python app/main.py --run-once
+```powershell
+.\venv\Scripts\python.exe -c "from config.settings import validate_config; validate_config(); print('Configuration valid')"
 ```
 
-You should see:
-- Configuration validation ✓
-- News fetching
-- Article summarization
-- Email sending
+## Run
 
-Check your inbox for the news email!
+Continuous Flask service plus internal scheduler:
 
-## How to Run
-
-### Option 1: Run Scheduler (Recommended)
-
-Start the automatic scheduler (runs at 10:00 PM daily):
-
-```bash
-python app/main.py
+```powershell
+.\venv\Scripts\python.exe app/main.py
 ```
 
-The scheduler will:
-- Run continuously
-- Check for scheduled tasks every minute
-- Send email at 10:00 PM (22:00)
-- Log all activity to `logs/app.log`
+One intentional news fetch and email delivery:
 
-### Option 2: Run Once (Testing)
-
-Test the system without starting the scheduler:
-
-```bash
-python app/main.py --run-once
+```powershell
+.\venv\Scripts\python.exe app/main.py --run-once
 ```
 
-### Option 3: Schedule with System Cron/Task Scheduler
+One-shot mode sends real email and exits nonzero on failure. The default internal schedule is `22:00` in `Asia/Karachi` (10 PM Pakistan time), independent of the host timezone. Use `python app/main.py --check-services` to check Ollama/model availability without fetching news or sending mail.
 
-**Windows (Task Scheduler):**
+## Verify local inference without sending email
 
-1. Open Task Scheduler
-2. Create Basic Task → "Daily News Update"
-3. Trigger: Daily at 10:00 PM
-4. Action: Start program
-   - Program: `python.exe`
-   - Arguments: `app/main.py --run-once`
-   - Start in: `path\to\daily AI news`
-5. Click OK
-
-**Linux/Mac (Cron):**
-
-```bash
-# Open crontab
-crontab -e
-
-# Add this line (sends email at 10 PM daily)
-0 22 * * * cd /path/to/daily\ AI\ news && python app/main.py --run-once
+```powershell
+.\venv\Scripts\python.exe -c "from app.llm_provider import create_llm_provider; print(create_llm_provider().summarize('Example', 'A team released a language model that summarizes documents locally on personal computers.'))"
 ```
 
-## How the System Works
+This calls only the configured LLM server. It does not fetch news or send an email. Native Ollama uses POST `/api/chat` with `stream=false`, reads `message.content`, and supports generation options. [Ollama chat API](https://docs.ollama.com/api/chat).
 
-### 1. News Fetching (`news_fetcher.py`)
-- Queries NewsAPI for AI news and world news
-- Uses multiple search queries for better coverage
-- Returns top 5 unique articles per category
-- Handles API errors gracefully
+Offline checks:
 
-### 2. Summarization (`summarizer.py`)
-- Uses OpenAI GPT-3.5-turbo
-- Creates 2-3 line summaries for each article
-- Falls back to original description if API fails
-- Handles rate limiting gracefully
-
-### 3. Email Sending (`email_sender.py`)
-- Constructs professional HTML email
-- Uses SMTP to send via Gmail
-- Includes article titles, summaries, sources, and links
-- Responsive design works on mobile and desktop
-
-### 4. Scheduling (`scheduler.py`)
-- Uses `schedule` library (simple and reliable)
-- Runs job at specified time daily
-- Logs all activity
-
-## Example Email Output
-
-**Subject:** Daily AI & World News
-
-**Content:**
-```
-📰 Daily AI & World News
-Your daily digest of the latest AI innovations and global updates
-
-🤖 Top AI News
-1. OpenAI Releases GPT-5
-   OpenAI announced the release of GPT-5, featuring improved reasoning...
-   Source: TechCrunch
-   Read full article →
-
-2. New AI Chip Breakthrough
-   ...
-
-🌍 Top World News
-1. Global Markets React to Economic News
-   ...
+```powershell
+.\venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-## Configuration Guide
+## Configuration
 
-### Change Scheduling Time
+| Variable | Default | Meaning |
+|---|---|---|
+| `LLM_PROVIDER` | `ollama` | Only supported inference provider |
+| `LLM_BASE_URL` | `http://127.0.0.1:11434` | Ollama server base URL |
+| `LLM_MODEL` | `qwen3:8b` | Installed model name |
+| `LLM_TIMEOUT` | `120` | Positive HTTP timeout in seconds |
+| `LLM_MAX_TOKENS` | `160` | Positive output-token budget (`num_predict`) |
+| `LLM_TEMPERATURE` | `0.3` | Generation temperature, validated from 0 to 2 |
+| `NEWSAPI_KEY` | Empty | Required news API credential |
+| `EMAIL_SENDER` | Empty | Required SMTP login/from address |
+| `EMAIL_PASSWORD` | Empty | Required SMTP password |
+| `EMAIL_RECIPIENT` | Empty | Required recipient |
+| `SMTP_SERVER` / `SMTP_PORT` | `smtp.gmail.com` / `587` | SMTP with STARTTLS |
+| `SCHEDULE_TIME` | `22:00` | Internal daily job time |
+| `SCHEDULE_TIMEZONE` | `Asia/Karachi` | Internal job timezone |
+| `LLM_API_TOKEN` | Empty | Optional bearer token for a secured Ollama gateway |
+| `TRIGGER_TOKEN` | Empty | Bearer token for HTTP trigger/log routes; blank disables access |
+| `PORT` | `5000` | Direct Flask server port |
 
-Edit `.env`:
-```env
-SCHEDULE_TIME=14:30  # 2:30 PM
+Actual story/post content takes priority over description metadata in summaries. Short text uses its title. Request/response failures use up to 150 characters of source text and log the exception type.
+
+## HTTP routes and scheduling
+
+| Method | Route | Behavior |
+|---|---|---|
+| GET | `/` | Static liveness response; does not test LLM/email readiness |
+| POST | `/trigger-news` | Synchronous real delivery; 200/500 success/failure |
+| GET | `/logs` | Last 50 lines of the local log file |
+
+Trigger and log routes require `Authorization: Bearer <TRIGGER_TOKEN>`. A blank token disables access. The root response reports liveness only. The pipeline checks Ollama/model availability before fetching news; individual inference failures can still use source-text fallbacks.
+
+Render Cron and the optional GitHub delivery workflow now use `0 17 * * *` (10 PM Pakistan time). Use one scheduler to avoid duplicate sends. The GitHub schedule is gated by repository variable `DAILY_NEWS_SCHEDULER=github`; it runs from the default branch. The keep-alive workflow is now manual only. Changing `SCHEDULE_TIME` does not change these cron expressions.
+
+## Deployment
+
+Follow [the Render redeployment guide](RENDER_REDEPLOYMENT_GUIDE.md) for the existing deployment findings and every setup/verification step. The prepared changes are local until published and deployed.
+
+Local inference works directly when Ollama and Python run on the same machine. A cloud deployment cannot use `127.0.0.1` to reach Ollama on your PC. It needs an appropriately secured, reachable Ollama server or a model running on that host.
+
+[render.yaml](render.yaml) is a paid cron example with local-provider settings and secret prompts; it does not install Ollama or a model. It has not been deployed or submitted to Render validation. Free Render web services block SMTP ports used by this sender. [Render free-service limitations](https://render.com/docs/free).
+
+The Procfile imports Flask through Gunicorn, so it does not start the internal scheduler. Local model generation can take longer than cloud responses; align server/proxy/workflow timeouts with the total job duration.
+
+## Project layout
+
+```text
+app/
+  main.py                 # Pipeline, CLI, Flask routes
+  llm_provider.py         # Native Ollama client and configured factory
+  summarizer.py           # Article summaries and fallback text
+  news_fetcher.py          # NewsAPI AI/world articles
+  hackernews_scraper.py    # Tech story source
+  nitter_scraper.py        # Social posts
+  twitter_scraper.py       # Optional scraper
+  email_sender.py          # HTML and SMTP delivery
+  scheduler.py             # In-memory scheduling
+config/settings.py         # Environment loading and validation
+.env.example               # Safe configuration template
+templates/email_template.html
+tests/test_local_llm.py     # Offline provider/config/pipeline tests
+requirements.txt
+render.yaml, Procfile, build.sh, runtime.txt
 ```
-
-### Change Email Recipient
-
-Edit `.env`:
-```env
-EMAIL_RECIPIENT=newrecipient@example.com
-```
-
-### Use Different Email Provider
-
-For Outlook:
-```env
-SMTP_SERVER=smtp.office365.com
-SMTP_PORT=587
-```
-
-For Yahoo:
-```env
-SMTP_SERVER=smtp.mail.yahoo.com
-SMTP_PORT=587
-```
-
-## Error Handling
-
-The system includes robust error handling:
-
-- **API Failures**: Uses fallback descriptions if OpenAI API fails
-- **Rate Limiting**: Catches and logs rate limit errors
-- **Empty Results**: Logs warning if no news found
-- **Email Errors**: Logs SMTP errors and continues
-- **Missing Config**: Validates all required variables before starting
-
-All errors are logged to `logs/app.log`.
 
 ## Troubleshooting
 
-### "Missing required environment variables"
-**Solution:** Check `.env` file has all required keys. Run `python app/main.py` to see which ones are missing.
+- **Connection refused:** start Ollama and check `LLM_BASE_URL`.
+- **Model not found:** run `ollama list`, then pull the desired model or correct `LLM_MODEL`.
+- **Inference timeout:** allow more time in `LLM_TIMEOUT` or choose a model suitable for your hardware.
+- **Fallback text instead of summaries:** review the local-LLM warning in `logs/app.log`; no cloud request is made.
+- **No digest:** the current pipeline requires at least one AI or world article, even if supplementary sources have results.
+- **Email failure:** inspect NewsAPI/SMTP settings and host network access. One-shot mode currently ignores the job Boolean, so exit code zero alone does not prove delivery.
+- **Wrong Python dependencies:** this checkout has both `.venv` and `venv`; use the intended interpreter explicitly.
+- **Google test import failure:** `test_google.py` references a disabled experimental function. Use `tests/` for current checks.
 
-### "SMTP authentication failed"
-**Solution:** Verify Email, Password, and SMTP settings in `.env`. For Gmail, make sure you're using the 16-character app password, not your regular password.
+## Documentation
 
-### "NewsAPI quota exceeded"
-**Solution:** Wait until tomorrow (quota resets daily). Free tier gives 100 requests/day.
+[PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) contains the full architecture, inventory, routes, scheduling, source schemas, findings, and index of all older guides. Its local-provider sections have been updated for this branch.
 
-### "OpenAI API rate limit"
-**Solution:** Default is 3 requests/minute. The system falls back to original descriptions if rate limited.
+Earlier Render/free-tier guides are retained as historical references and carry a migration notice. Their OpenAI instructions and cost/readiness assertions do not describe the active local branch.
 
-### No email received
-**Solution:** 
-1. Check `logs/app.log` for errors
-2. Check spam folder
-3. Verify recipient email in `.env`
-4. Test with `python app/main.py --run-once`
-
-### Scheduler not sending at 10 PM
-**Solution:** 
-1. Keep terminal/command window open
-2. Check system time is correct
-3. Verify `SCHEDULE_TIME=22:00` in `.env`
-4. Check `logs/app.log` for scheduled job confirmation
-
-## Advanced Usage
-
-### Customize News Queries
-
-Edit `app/news_fetcher.py`, modify the `queries` list in `fetch_ai_news()`:
-
-```python
-queries = [
-    "latest AI news 2026",
-    "machine learning breakthroughs",
-    "AI startup funding"
-]
-```
-
-### Modify Email Template
-
-Edit `templates/email_template.html`. The placeholders are:
-- `{{ AI_NEWS }}` - AI news section (auto-populated)
-- `{{ WORLD_NEWS }}` - World news section (auto-populated)
-
-### Use Different News Source
-
-Replace NewsAPI with other sources:
-- `newsdata.io` - Free tier
-- `currentsapi.services` - Free tier
-- Custom web scraping with BeautifulSoup
-
-## Performance
-
-- **Startup**: < 2 seconds
-- **News Fetch**: 2-3 seconds
-- **Summarization**: 5-10 seconds (depends on OpenAI API)
-- **Email Send**: 1-2 seconds
-- **Total Time**: ~10-15 seconds
-
-## Security Note
-
-- `.env` file contains sensitive credentials
-- Add `.env` to `.gitignore` if using git
-- Never share your API keys or app passwords
-- Regenerate API keys if accidentally exposed
-
-## Dependencies
-
-- `requests` - HTTP requests for API calls
-- `openai` - OpenAI API client
-- `schedule` - Job scheduling library
-- `python-dotenv` - Load environment variables
-
-## License
-
-MIT License - Feel free to use and modify
-
-## Support
-
-For issues:
-1. Check `logs/app.log` for detailed error messages
-2. Verify all API keys are valid
-3. Test with `python app/main.py --run-once`
-4. Check internet connection
-
-## Future Enhancements
-
-- Database for storing sent news (prevent duplicates across days)
-- User preferences for news categories
-- Multiple recipient support
-- Web dashboard to view scheduled emails
-- Push notifications alternative to email
-- Support for more news sources
-
----
-
-**Enjoy your daily AI & World News! 🚀**
+Future work includes durable delivery history/idempotency, endpoint protection, bounded scraping, HTML escaping, preferences, multiple recipients, and a dashboard. These features are not implemented. The previous README asserted MIT licensing, but no standalone license file is present.

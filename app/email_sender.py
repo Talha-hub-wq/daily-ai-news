@@ -173,7 +173,7 @@ class EmailSender:
     
     def _send_smtp(self, recipient: str, message: MIMEMultipart) -> None:
         """Send email via SMTP."""
-        with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+        with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=30) as server:
             server.starttls()
             server.login(self.sender, self.password)
             server.sendmail(self.sender, recipient, message.as_string())

@@ -1,180 +1,49 @@
 name: Daily AI News Trigger
 
 on:
-  # Daily schedule (UTC time)
   schedule:
-    # 13:25 UTC = 6:25 PM Pakistan Time
-    - cron: '25 13 * * *'
-
-  # Manual trigger from GitHub Actions tab
+    # 17:00 UTC = 10 PM Pakistan time.
+    - cron: '0 17 * * *'
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-ai-news-delivery
+  cancel-in-progress: false
 
 jobs:
   trigger-news:
+    # Use ONE scheduler. Leave this variable unset when using Render Cron.
+    if: github.event_name == 'workflow_dispatch' || vars.DAILY_NEWS_SCHEDULER == 'github'
     runs-on: ubuntu-latest
-
-    timeout-minutes: 15
-
+    timeout-minutes: 30
+    env:
+      SERVICE_URL: ${{ vars.RENDER_SERVICE_URL }}
+      TRIGGER_TOKEN: ${{ secrets.TRIGGER_TOKEN }}
     steps:
-      # Checkout repository
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      # Print current UTC time
-      - name: Show Current Time
+      - name: Validate target and credentials
+        shell: bash
         run: |
-          echo "Current UTC Time:"
-          date -u
-
-      # Wait a bit (helps Render cold start)
-      - name: Initial Delay
-        run: sleep 15
-
-      # Trigger Render endpoint
-      - name: Trigger Daily News Endpoint
+          test -n "$SERVICE_URL" || { echo 'Set RENDER_SERVICE_URL repository variable'; exit 1; }
+          test -n "$TRIGGER_TOKEN" || { echo 'Set TRIGGER_TOKEN repository secret'; exit 1; }
+          case "$SERVICE_URL" in https://*) ;; *) echo 'Service URL must use HTTPS'; exit 1 ;; esac
+      - name: Wake service and check health
+        shell: bash
         run: |
-          SERVICE_URL="https://daily-ai-news-merl.onrender.com"
-
-          echo "======================================"
-          echo "Triggering Daily AI News Service"
-          echo "URL: $SERVICE_URL/trigger-news"
-          echo "======================================"
-
-          SUCCESS=false
-
-          for attempt in 1 2 3
-          do
-            echo ""
-            echo "Attempt $attempt of 3"
-
-            HTTP_CODE=$(curl -o response.txt -s -w "%{http_code}" \
-              -X POST "$SERVICE_URL/trigger-news" \
-              --connect-timeout 30 \
-              --max-time 180 \
-              -H "Content-Type: application/json")
-
-            echo "HTTP Status: $HTTP_CODE"
-
-            echo "Response:"
-            cat response.txt
-
-            if [ "$HTTP_CODE" = "200" ]; then
-              echo ""
-              echo "SUCCESS: Daily news triggered successfully!"
-              SUCCESS=true
-              break
-            fi
-
-            echo ""
-            echo "Request failed. Waiting before retry..."
-            sleep 20
-          done
-
-          if [ "$SUCCESS" = false ]; then
-            echo ""
-            echo "ERROR: Failed after 3 attempts"
-            exit 1
-          fi
-
-      # Success log
-      - name: Success Message
-        if: success()
+          curl --fail --silent --show-error \
+            --connect-timeout 30 --max-time 120 \
+            --retry 3 --retry-delay 10 --retry-all-errors \
+            "${SERVICE_URL%/}/" -o health.json
+          python -c "import json; assert json.load(open('health.json')).get('status') == 'healthy'"
+      - name: Send one digest
+        shell: bash
         run: |
-          echo ""
-          echo "======================================"
-          echo "Daily AI News workflow completed!"
-          echo "Check your email inbox."
-          echo "======================================"
-
-      # Failure log
-      - name: Failure Message
-        if: failure()
-        run: |
-          echo ""
-          echo "======================================"
-          echo "Workflow failed."
-          echo "Check Render logs and GitHub Actions logs."
-          echo "======================================"
-# name: Daily AI News Trigger
-
-# # Trigger at 10 PM UTC every day
-# # Adjust times in the cron expression as needed
-# on:
-#   schedule:
-#     # Runs at 10:30 AM UTC = 3:30 PM PKT (Pakistan Time)
-#     # Format: minute hour day month dayofweek
-#     # 30 10 * * * = 10:30 AM UTC (3:30 PM PKT)
-#     # To run at different times, change the cron expression
-#     # Examples for Pakistan:
-#     # 0 1 * * * = 1:00 AM UTC (6:00 AM PKT)
-#     # 0 4 * * * = 4:00 AM UTC (9:00 AM PKT)
-#     # 0 13 * * * = 1:00 PM UTC (6:00 PM PKT)
-#     - cron: '25 13 * * *'
-  
-#   # Allows you to manually trigger from GitHub Actions tab
-#   workflow_dispatch:
-
-# jobs:
-#   trigger-news-update:
-#     name: Trigger Daily News Update
-#     runs-on: ubuntu-latest
-    
-#     steps:
-#       # Step 1: Checkout code (optional, for logging purposes)
-#       - name: Checkout code
-#         uses: actions/checkout@v3
-      
-#       # Step 2: Trigger the news update endpoint
-#       - name: Trigger Daily News Update
-#         run: |
-#           SERVICE_URL="https://daily-ai-news-merl.onrender.com"
-          
-#           echo "🚀 Triggering news update at $SERVICE_URL/trigger-news"
-#           echo "Current time: $(date)"
-          
-#           # Try 3 times with longer timeout
-#           for attempt in 1 2 3; do
-#             echo "Attempt $attempt/3..."
-            
-#             RESPONSE=$(curl -s -w '\n%{http_code}' -X POST "$SERVICE_URL/trigger-news" \
-#               --connect-timeout 30 \
-#               --max-time 120 \
-#               -H "Content-Type: application/json" 2>&1)
-            
-#             HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-#             BODY=$(echo "$RESPONSE" | head -n-1)
-            
-#             echo "Response Code: $HTTP_CODE"
-            
-#             if [ "$HTTP_CODE" = "200" ]; then
-#               echo "✅ Daily news update triggered successfully!"
-#               exit 0
-#             elif [ "$HTTP_CODE" = "000" ]; then
-#               echo "⏳ Connection timeout, retrying..."
-#               sleep 10
-#             else
-#               echo "Response: $BODY"
-#               break
-#             fi
-#           done
-          
-#           echo "❌ Failed after 3 attempts"
-#           exit 1
-      
-#       # Step 3: Log success
-#       - name: Log Success
-#         if: success()
-#         run: |
-#           echo "✅ Daily news email should arrive soon!"
-#           echo "Check your inbox for 'Daily AI & World News'"
-
-# # Notifications (Optional)
-# # GitHub sends notifications if this workflow fails
-# # You can also add Slack, Discord, Email notifications here
-# # See: https://github.com/actions/toolkit
-
-# # Tips:
-# # - View workflow runs in: GitHub Repo → Actions tab
-# # - Manual trigger: Actions tab → "Daily AI News Trigger" → "Run workflow"
-# # - View logs: Click the workflow run → See detailed logs
-# # - Disable: Settings → Actions → Disable this workflow
+          # Do not retry delivery: a timed-out request may already have sent email.
+          curl --fail --silent --show-error \
+            --connect-timeout 30 --max-time 600 \
+            -X POST "${SERVICE_URL%/}/trigger-news" \
+            -H "Authorization: Bearer $TRIGGER_TOKEN" -o response.json
+          python -c "import json; assert json.load(open('response.json')).get('status') == 'success'"
+          echo 'Server reported successful SMTP submission. Verify inbox receipt.'
