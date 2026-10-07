@@ -126,17 +126,19 @@ Actual story/post content takes priority over description metadata in summaries.
 
 Trigger and log routes require `Authorization: Bearer <TRIGGER_TOKEN>`. A blank token disables access. The root response reports liveness only. The pipeline checks Ollama/model availability before fetching news; individual inference failures can still use source-text fallbacks.
 
-Render Cron and the optional GitHub delivery workflow now use `0 17 * * *` (10 PM Pakistan time). Use one scheduler to avoid duplicate sends. The GitHub schedule is gated by repository variable `DAILY_NEWS_SCHEDULER=github`; it runs from the default branch. The keep-alive workflow is now manual only. Changing `SCHEDULE_TIME` does not change these cron expressions.
+The GitHub email workflow uses `0 17 * * *` (10 PM Pakistan time) and runs the full pipeline, including Ollama, on a standard cloud runner. It runs from the default branch; setting repository variable `DAILY_NEWS_SCHEDULER=disabled` pauses scheduled sends. GitHub may delay scheduled starts. The keep-alive workflow is manual only. Use one scheduler to avoid duplicate sends.
 
 ## Deployment
 
-Follow [the Render redeployment guide](RENDER_REDEPLOYMENT_GUIDE.md) for the existing deployment findings and every setup/verification step. The prepared changes are local until published and deployed.
+The selected deployment stays free and works while your PC is off. GitHub Actions installs Ollama, pulls `qwen3:1.7b`, fetches and summarizes news, and sends SMTP email. Render hosts the web/status service on its free plan and can sleep without affecting the email job. Your local model remains `qwen3:8b`.
 
-Local inference works directly when Ollama and Python run on the same machine. A cloud deployment cannot use `127.0.0.1` to reach Ollama on your PC. It needs an appropriately secured, reachable Ollama server or a model running on that host.
+Follow [the full deployment guide](RENDER_REDEPLOYMENT_GUIDE.md) to unarchive the GitHub repository, publish the feature branch, add Actions secrets, test delivery, merge the scheduled workflow into the default branch, and redeploy the existing free Render service.
 
-[render.yaml](render.yaml) is a paid cron example with local-provider settings and secret prompts; it does not install Ollama or a model. It has not been deployed or submitted to Render validation. Free Render web services block SMTP ports used by this sender. [Render free-service limitations](https://render.com/docs/free).
+Standard GitHub-hosted runners are free for public repositories; private repositories have separate allowances. [GitHub Actions billing](https://docs.github.com/en/actions/concepts/billing-and-usage). The first real workflow run is still required to verify CPU inference performance and inbox delivery.
 
-The Procfile imports Flask through Gunicorn, so it does not start the internal scheduler. Local model generation can take longer than cloud responses; align server/proxy/workflow timeouts with the total job duration.
+[render.yaml](render.yaml) now describes a free web/status service, with HTTP delivery/log access disabled by a blank `TRIGGER_TOKEN`. It does not run Ollama or send email. Free Render web services block the SMTP ports used by this sender. [Render free-service limitations](https://render.com/docs/free).
+
+The Procfile imports Flask through Gunicorn without starting the internal scheduler. A public health response establishes liveness only. The new GitHub workflow does not call that response or any Render trigger endpoint.
 
 ## Project layout
 

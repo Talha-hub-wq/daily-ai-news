@@ -7,6 +7,17 @@
 
 This document consolidates the project into one reference. Implementation details come from the current working tree, including uncommitted changes. Older guides describe earlier versions and sometimes contradict the code. External hosting facts are linked to official documentation where verified. Credential values are intentionally excluded.
 
+## Current free-tier deployment decision
+
+The user confirmed that hosting must stay free and their PC will be off. This supersedes the paid Cron proposal in the earlier review below. The current [deployment guide](RENDER_REDEPLOYMENT_GUIDE.md) describes the selected setup:
+
+- GitHub Actions runs the complete news/Ollama/SMTP pipeline on a standard Ubuntu cloud runner at `0 17 * * *` (10 PM Pakistan time, subject to GitHub delay).
+- The cloud runner installs Ollama and pulls `qwen3:1.7b`; local settings retain `qwen3:8b`. `CLOUD_LLM_MODEL` may override the cloud model. Real cloud performance and delivery remain unverified.
+- GitHub Actions secrets provide NewsAPI and SMTP credentials. No PC endpoint, paid model API or Render email trigger is used.
+- `render.yaml` now defines a `plan: free` web/status service, not a paid Cron Job. Render sleep and blocked SMTP do not affect the separate GitHub email job.
+- Scheduled sends default to enabled; `DAILY_NEWS_SCHEDULER=disabled` pauses them. The workflow must reach the default branch to run on its daily schedule.
+- Repository archiving still blocks publication. Account access, private Actions secrets, a manual email test and Render redeployment remain necessary.
+
 ## October 7 deployment update
 
 The sections below retain the October 6 review context. For current Render setup, use [RENDER_REDEPLOYMENT_GUIDE.md](RENDER_REDEPLOYMENT_GUIDE.md) and [README.md](README.md); this update supersedes older scheduling, authentication and failure-status findings in this report.

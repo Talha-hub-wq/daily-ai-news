@@ -1,40 +1,19 @@
-# A cloud host needs a reachable, secured Ollama server; localhost on Render
-# does not refer to your computer. This cron uses a paid compute plan for SMTP.
+# FREE web/status deployment. GitHub Actions runs Ollama and sends daily email.
+# No SMTP credentials or local model host are needed by this status service.
 services:
-  - type: cron
-    name: daily-ai-news-digest
+  - type: web
+    name: daily-ai-news-status
     branch: ollama-with-AI-News-Agent
     runtime: python
-    plan: 0.5c-512mb
+    plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python app/main.py --run-once
-    schedule: "0 17 * * *"  # 17:00 UTC = 22:00 Asia/Karachi
+    startCommand: gunicorn app.main:app --workers 1 --bind 0.0.0.0:$PORT
+    healthCheckPath: /
     envVars:
-      - key: LLM_PROVIDER
-        value: ollama
-      - key: LLM_BASE_URL
-        sync: false
-      - key: LLM_MODEL
-        value: qwen3:8b
-      - key: LLM_TIMEOUT
-        value: "120"
-      - key: LLM_MAX_TOKENS
-        value: "160"
-      - key: LLM_TEMPERATURE
-        value: "0.3"
-      - key: NEWSAPI_KEY
-        sync: false
-      - key: EMAIL_SENDER
-        sync: false
-      - key: EMAIL_PASSWORD
-        sync: false
-      - key: EMAIL_RECIPIENT
-        sync: false
       - key: SCHEDULE_TIME
         value: "22:00"
       - key: SCHEDULE_TIMEZONE
         value: Asia/Karachi
-      - key: SMTP_SERVER
-        value: "smtp.gmail.com"
-      - key: SMTP_PORT
-        value: "587"
+      # Disable HTTP delivery/log access: the free web host is for status only.
+      - key: TRIGGER_TOKEN
+        value: ""

@@ -1,179 +1,146 @@
-# Render redeployment: daily news at 10 PM Pakistan time
+# Free deployment: daily AI news while your PC is off
 
-Reviewed October 7, 2026. Target branch: `ollama-with-AI-News-Agent`.
+Updated October 7, 2026. Branch: `ollama-with-AI-News-Agent`.
 
-## What the existing deployment currently does
+## The selected setup
 
-- [Existing Render web service](https://daily-ai-news-merl.onrender.com/) returned HTTP 200 after a cold-start timeout. Its response still advertised `13:25 (server local time)` and did not contain the new Ollama fields. This confirms that the old web app can start, not that it can fetch, summarize, or deliver email.
-- The remote log endpoint contained startup entries only during this inspection. Previous email delivery cannot be established from those entries.
-- A feature-branch push was rejected with HTTP 403: **the GitHub repository is archived and read-only**. It must be unarchived before publishing or redeploying this code.
-- The public GitHub repository's last push was May 7, 2026. Only `main` was published when checked; the Ollama feature branch was still local.
-- The published daily workflow used `25 13 * * *`: 6:25 PM Pakistan time, not 10 PM. Its latest five available runs, June 12–16, failed. [Latest daily run](https://github.com/Talha-hub-wq/daily-ai-news/actions/runs/27638226768).
-- Latest available keep-alive runs were June 17. Success there only establishes an HTTP request succeeded. It does not establish that email was sent. GitHub reported the workflows as active, but no recent scheduled execution was visible. The cause of the failures or missing runs was not established.
-
-## Recommended deployment
-
-Use a Render **Cron Job**, which starts the Python pipeline once a day, then exits. There is no web server to keep awake. Its schedule is:
+You confirmed that you use the free tier and need delivery while your PC is off. The setup is therefore:
 
 ```text
-0 17 * * *
+GitHub schedule: 17:00 UTC / 10 PM Pakistan time
+    -> standard GitHub-hosted Ubuntu runner
+    -> install Ollama and pull qwen3:1.7b
+    -> fetch articles, summarize, send email via SMTP
+    -> runner exits
+
+Render Free web service -> public status endpoint (allowed to sleep)
 ```
 
-Render cron expressions use UTC; 17:00 UTC is **22:00 Asia/Karachi**. This is the job's start time. Fetching, local inference and mail delivery take additional time, so the email arrives after the job starts. [Render cron documentation](https://render.com/docs/cronjobs).
+The daily email job does not call Render, so Render sleeping does not stop delivery. Ollama runs on the GitHub cloud runner, not your PC. No tunnel or paid model API is needed. Your local `.env` still uses `qwen3:8b`; the workflow selects `qwen3:1.7b` to reduce CPU inference requirements. The smaller model can produce different summaries. Its end-to-end performance on GitHub still needs a real test.
 
-Render Cron Jobs are paid: the documented minimum is $1 per service per month, with active compute charges. Confirm the dashboard's current estimate before creating the service. An external Ollama server has its own hosting cost. [Render cron billing](https://render.com/docs/cronjobs).
+Standard GitHub-hosted runners are free for public repositories. Your repository was public when checked; private repositories have a free allowance and different billing rules. This workflow uses a standard runner, not a paid larger runner. [GitHub billing](https://docs.github.com/en/actions/concepts/billing-and-usage).
 
-The existing free web service sleeps after inactivity and blocks outbound SMTP ports 25, 465 and 587. The current sender uses SMTP 587, so keeping that free web service awake does not fix email delivery. [Render free-service limits](https://render.com/docs/free).
+GitHub schedules may start late, and a digest needs additional time to download the model, fetch and summarize news. This is a 10 PM scheduled start, not guaranteed inbox receipt at exactly 10 PM. Public repository schedules can be disabled after 60 days of inactivity. [GitHub schedule rules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 
-## Step 1 — choose where Ollama will run
+Free Render blocks outbound SMTP ports 25, 465 and 587, and does not offer free Cron Jobs. That is why the existing SMTP pipeline runs on GitHub instead of inside free Render. [Render free limitations](https://render.com/docs/free).
 
-The application uses Ollama's native `/api/tags` and `/api/chat` endpoints. It does not install Ollama or download model weights during the Render build.
+## What was checked in the existing deployment
 
-`LLM_BASE_URL=http://127.0.0.1:11434` works on your PC. On Render it points to the Render container, which has no Ollama server. Choose one of these arrangements before deploying:
+- [Existing web service](https://daily-ai-news-merl.onrender.com/) responded HTTP 200 after waking. Its response advertised the old `13:25 (server local time)` schedule. This establishes startup/liveness only.
+- Available remote logs showed startup entries, not verified recent email delivery.
+- The latest five available daily GitHub runs, June 12?16, failed. [Latest daily run](https://github.com/Talha-hub-wq/daily-ai-news/actions/runs/27638226768).
+- The old YAML used `25 13 * * *`, which means 6:25 PM Pakistan time, not 10 PM. There were duplicate scheduled keep-alive workflows.
+- The remote repository's last push was May 7 and only `main` was published when inspected.
+- Publishing the prepared branch failed: GitHub returned HTTP 403 stating that **the repository is archived and read-only**. No new branch or deployment was published.
 
-1. An existing always-on Ollama server reachable by Render through a secured HTTPS endpoint.
-2. Your PC running Ollama, kept online with a secured tunnel or gateway reachable by Render. Delivery depends on that PC and its network remaining available.
-3. A separate paid server with sufficient memory/compute for your model, running Ollama behind a secured HTTPS gateway.
+The new workflow and free Render Blueprint are prepared locally. The earlier paid Cron proposal has been replaced; no paid resource was created.
 
-The small Render Cron instance runs the Python news agent only; it is not sized to host `qwen3:8b`. Pull the selected model on the Ollama host and verify it appears in `ollama list`. Set `LLM_BASE_URL` to the gateway base URL, without `/api/chat`. If the gateway requires a bearer token, set `LLM_API_TOKEN`; the client sends it to both endpoints. Native Ollama itself does not enforce that gateway token.
+## Step 1 ? unarchive the repository
 
-## Step 2 — publish the prepared feature branch
+1. Sign into the GitHub account with owner/admin rights for `Talha-hub-wq/daily-ai-news`.
+2. Open repository **Settings ? General ? Danger Zone ? Unarchive this repository**.
+3. Follow GitHub's confirmation. This changes repository availability; it does not deploy the local branch.
+4. Check Actions settings allow GitHub Actions and the official checkout/setup-python actions.
 
-Render can only deploy code available in GitHub. The deployment changes have been committed locally on the feature branch. Publishing was attempted but GitHub rejected it because the repository is archived.
+An archived repository must be unarchived before it accepts changes. If you cannot unarchive it, use a new repository you control and connect that repository to Render instead. [GitHub archiving instructions](https://docs.github.com/en/repositories/archiving-a-github-repository/archiving-repositories).
 
-First open GitHub repository **Settings ? General ? Danger Zone ? Unarchive this repository** (owner/admin access required), follow GitHub's confirmation, then push the branch. If the account cannot unarchive it, use a new repository you control and connect that repository to Render instead.
+## Step 2 ? publish the feature branch
+
+The deployment changes are committed locally on the feature branch. Review any further working-tree edits before staging them. Keep `.env`, logs and virtual environments out of Git.
 
 ```powershell
 Set-Location 'D:\daily AI news'
 git branch --show-current
 git status --short
-```
-
-The branch should be `ollama-with-AI-News-Agent`. Review changes, then stage the application, configuration, tests and deployment documentation you want to publish. Never add `.env`, logs, virtual environments or credential files. Check the staged diff before committing:
-
-```powershell
-git diff --cached
-# Only if there are further reviewed changes to commit:
-git commit -m "Update Render deployment configuration"
+# After committing reviewed changes:
 git push -u origin ollama-with-AI-News-Agent
 ```
 
-This publishes the feature branch without replacing `main`. Render must explicitly select this branch. GitHub scheduled workflows run from the default branch, so feature-branch workflow edits alone do not replace the old schedules on `main`. [GitHub schedule rules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+The active branch should be `ollama-with-AI-News-Agent`. Publishing that branch leaves `main` unchanged.
 
-## Step 3 — connect Render and GitHub
+## Step 3 ? add GitHub Actions secrets
 
-1. Sign into [Render Dashboard](https://dashboard.render.com/).
-2. Connect the GitHub account that can access `Talha-hub-wq/daily-ai-news`.
-3. Grant repository access if Render cannot list it.
-4. If using the assistant to perform the deployment, connect the suggested Render integration and provide the Ollama endpoint configuration privately through Render's environment settings. Confirm the paid Cron approach before creating a billable service.
+Open repository **Settings ? Secrets and variables ? Actions ? Secrets ? New repository secret**. Add these four values privately:
 
-Dashboard inspection, deployment and billing changes require account access. Public health checks alone do not provide it.
-
-## Step 4 — create a NEW Cron Job
-
-Keep the existing web service while validating the replacement. Render does not allow changing an existing service's type to a Cron Job. The prepared Blueprint uses a distinct name, `daily-ai-news-digest`. [Render Blueprint specification](https://render.com/docs/blueprint-spec).
-
-**Manual dashboard route:** select **New → Cron Job**, connect the repository, and enter:
-
-| Setting | Value |
+| Secret | What to enter |
 |---|---|
-| Repository | `Talha-hub-wq/daily-ai-news` |
-| Branch | `ollama-with-AI-News-Agent` |
-| Name | `daily-ai-news-digest` |
-| Runtime | Python |
-| Root directory | Empty: project is at repository root |
-| Build command | `pip install -r requirements.txt` |
-| Command | `python app/main.py --run-once` |
-| Schedule | `0 17 * * *` |
-| Instance | Small paid instance for the Python agent; verify displayed price |
-
-**Blueprint route:** select **New → Blueprint**, choose the same repository and branch, and use [render.yaml](render.yaml). Fill in the secret prompts and review the paid resource before applying. This file has been locally inspected; it has not yet been submitted to Render's account-level validator.
-
-Do not use the Flask start command or Procfile for the Cron Job. The one-shot command performs one digest and exits nonzero on failure, allowing Render to report a failed run.
-
-## Step 5 — enter environment variables
-
-Reuse working credentials from your private environment or the existing Render service. Do not copy secrets into GitHub source, this document, or chat.
-
-| Variable | Value / purpose |
-|---|---|
-| `LLM_PROVIDER` | `ollama` |
-| `LLM_BASE_URL` | Your reachable, secured Ollama gateway URL |
-| `LLM_MODEL` | `qwen3:8b`, or the model actually installed on that server |
-| `LLM_API_TOKEN` | Optional bearer token required by your gateway; add manually if needed |
-| `LLM_TIMEOUT` | `120`; increase only if needed for that server |
-| `LLM_MAX_TOKENS` | `160` |
-| `LLM_TEMPERATURE` | `0.3` |
-| `NEWSAPI_KEY` | Your NewsAPI credential |
+| `NEWSAPI_KEY` | Existing NewsAPI credential |
 | `EMAIL_SENDER` | SMTP login/from address |
-| `EMAIL_PASSWORD` | SMTP credential; Gmail generally uses an app password |
-| `EMAIL_RECIPIENT` | Address that receives the digest |
-| `SMTP_SERVER` | `smtp.gmail.com`, or your actual provider |
-| `SMTP_PORT` | `587` for the current STARTTLS sender |
-| `SCHEDULE_TIME` | `22:00` |
-| `SCHEDULE_TIMEZONE` | `Asia/Karachi` |
+| `EMAIL_PASSWORD` | SMTP credential; for Gmail, use an app password where required |
+| `EMAIL_RECIPIENT` | Your destination inbox |
 
-There is no OpenAI key requirement. For this Cron Job, Render's cron expression controls execution; `SCHEDULE_TIME` affects only the internal scheduler and descriptive health response.
+GitHub does not receive your local `.env` automatically. Use your existing private configuration to populate these settings; do not paste passwords into source files or chat.
 
-`TRIGGER_TOKEN` is unnecessary for a Cron Job because no HTTP endpoint is served. It is required if you choose the web-service/GitHub alternative below.
+Optional **Variables** under the same Actions settings:
 
-## Step 6 — build, then run once
+| Variable | Default / purpose |
+|---|---|
+| `CLOUD_LLM_MODEL` | `qwen3:1.7b`; override only with a model suitable for the runner |
+| `SMTP_SERVER` | `smtp.gmail.com` |
+| `SMTP_PORT` | `587`; sender currently uses STARTTLS |
+| `DAILY_NEWS_SCHEDULER` | Unset enables scheduling; set `disabled` to pause scheduled sends |
+| `RENDER_SERVICE_URL` | Existing Render HTTPS URL; used only by the optional manual health check |
 
-1. Create the service only after reviewing the cost and endpoint configuration.
-2. Watch the build logs. Dependency installation must complete successfully.
-3. Use the Cron Job's **Trigger Run** action for one intentional test email.
-4. Inspect run logs. The pipeline checks Ollama/model availability before fetching news. A failed connection/model check must cause a failed run rather than silently claiming deployment success.
-5. Confirm logs contain `Daily news email sent successfully` and the job finishes successfully.
-6. Confirm the message actually arrives at `EMAIL_RECIPIENT`; check spam if necessary. SMTP acceptance alone does not guarantee inbox placement.
-7. Check the next scheduled run is 17:00 UTC / 10 PM Pakistan time. Keep monitoring the first daily run.
+No OpenAI key, hosted Ollama endpoint, `LLM_API_TOKEN` or `TRIGGER_TOKEN` is needed for the cloud email job. Do not change the repository's public/private setting merely to set up this deployment.
 
-Local verification without fetching news or sending mail:
+## Step 4 ? test the new workflow on the feature branch
 
-```powershell
-.\venv\Scripts\python.exe -m unittest discover -s tests -v
-.\venv\Scripts\python.exe app/main.py --check-services
+1. Open **Actions ? Daily AI News Trigger** (the name on old `main`) or **Daily AI News Email** after the new name is published on the default branch.
+2. Select **Run workflow** and choose `ollama-with-AI-News-Agent`. The workflow file already exists on `main`, allowing manual dispatch to a branch containing the updated file. If the UI does not offer the workflow/branch, check publication and Actions permissions first.
+3. Watch the run. It installs Python dependencies, validates credentials, installs Ollama, starts a loopback-only server, downloads the selected model and runs the pipeline once.
+4. Successful steps must include model readiness and `Daily news email sent successfully`.
+5. Confirm the digest arrives in `EMAIL_RECIPIENT`, including spam/junk checks.
+
+This is a real email test. No delivery retry is configured: a timeout after SMTP acceptance could otherwise cause duplicate email. Inspect the inbox and run logs before repeating a failed job.
+
+The runner has a 60-minute job limit; installation/model pull each have a 15-minute bound, and individual inference requests have a 180-second timeout. These limits report failures rather than claiming success. The first cloud run remains required to verify download speed, inference duration, SMTP authentication and actual inbox delivery.
+
+The workflow follows [Ollama's Linux installation instructions](https://docs.ollama.com/linux) and uses the published [qwen3:1.7b model](https://ollama.com/library/qwen3:1.7b). Its server/model files exist only for that job; it downloads the model again for subsequent jobs.
+
+## Step 5 ? enable the daily schedule from main
+
+After the feature-branch test succeeds:
+
+1. Review a pull request from `ollama-with-AI-News-Agent` into `main` and merge the tested changes.
+2. Verify `.github/workflows/daily-news.yml` on `main` contains `0 17 * * *`.
+3. Ensure `DAILY_NEWS_SCHEDULER` is not set to `disabled`.
+4. Remove/disable both old scheduled keep-alive workflows. The prepared commit deletes redundant files and changes the remaining health workflow to manual only.
+5. Monitor the first scheduled run and inbox delivery. GitHub runs schedules from the default branch; pushing the feature branch alone does not activate its schedule.
+6. If Actions later reports the schedule disabled due to inactivity, re-enable it in the repository's Actions UI and check subsequent execution.
+
+There is no paid Render Cron Job in this setup. Avoid another local scheduled copy if you do not want duplicate emails when the PC happens to be on.
+
+## Step 6 ? redeploy the existing Render service on Free
+
+Email delivery is independent of this step. You can keep the existing free web service and redeploy it as a status service:
+
+1. Sign into [Render Dashboard](https://dashboard.render.com/), open the existing service and verify its instance type is **Free**.
+2. In **Settings**, select repository `Talha-hub-wq/daily-ai-news` and branch `ollama-with-AI-News-Agent` (or `main` after the reviewed merge).
+3. Use runtime **Python**, root directory empty, build command `pip install -r requirements.txt`.
+4. Set start command to:
+
+```bash
+gunicorn app.main:app --workers 1 --bind 0.0.0.0:$PORT
 ```
 
-The readiness command tests your locally configured Ollama connection. It does not establish that Render can reach that server, authenticate to SMTP, or fetch news. A manual Render run and inbox check are the end-to-end deployment verification.
+5. Set health-check path `/`.
+6. Set `SCHEDULE_TIME=22:00`, `SCHEDULE_TIMEZONE=Asia/Karachi`, and explicitly set `TRIGGER_TOKEN` to an empty value. The trigger/log endpoints remain disabled without a token. The GitHub job does not use those endpoints.
+7. Existing NewsAPI/email credentials are unnecessary for this status-only service. Keep the actual sending credentials in GitHub Actions secrets. Gunicorn imports Flask without starting its internal scheduler.
+8. Choose **Manual Deploy ? Deploy latest commit** and inspect build/start logs.
+9. Open the service URL after startup. It should return HTTP 200 with the updated Ollama/timezone fields. The health response is still liveness only; it does not certify that a GitHub run or email succeeded.
+10. Allow the free web service to sleep normally. No keep-alive cron is needed.
 
-## Step 7 — remove duplicate scheduling after a successful test
+To create a new free status service instead, choose **New ? Web Service** with the same settings and **Free** instance. The updated [render.yaml](render.yaml) defines that web service as `daily-ai-news-status` with `plan: free`; it no longer creates a paid Cron Job. Applying a new Blueprint can create a separate service, so redeploy the existing service manually if you want to retain its URL. Check dashboard resource type/plan before applying.
 
-1. In GitHub → Actions, disable the old **Daily AI News Trigger** workflow if Render Cron is the selected scheduler.
-2. Disable both old scheduled **Keep Alive** workflows. The repository previously had duplicate keep-alive files.
-3. Stop any copy of the local continuously scheduled Python app if you no longer want it sending another daily digest.
-4. After confirming the new service and email, suspend or remove the old Render web service if no longer needed.
+Account access through the suggested Render integration is still needed for the assistant to perform dashboard changes directly. No dashboard redeployment has happened yet.
 
-The updated feature-branch daily workflow defaults to skipping scheduled delivery unless the repository variable `DAILY_NEWS_SCHEDULER=github` is set. The remaining health workflow is manual only. These changes take effect for scheduled GitHub execution only after they reach the default branch. You can disable the old workflows through GitHub immediately without merging the feature branch.
+## Step 7 ? verify and monitor
 
-## Alternative: keep the web service and use GitHub scheduling
+- GitHub run finishes successfully and the inbox receives the digest.
+- The scheduled workflow exists on `main`, at `0 17 * * *`.
+- The next day, confirm a scheduled run and actual inbox delivery; the expected time includes startup and processing delays.
+- Render's status URL can sleep without affecting the GitHub email job.
+- If the job fails, inspect Actions logs for model download, readiness, news fetch, inference timeout or SMTP authentication errors. A healthy Render URL does not resolve those failures.
+- Do not enable both this full-pipeline workflow and a separate HTTP-trigger scheduler.
 
-This is a separate deployment choice. Use one scheduler, not both.
-
-1. Use a web instance that supports your SMTP delivery and configure its remote Ollama endpoint.
-2. Deploy the feature branch with build command `pip install -r requirements.txt` and start command `gunicorn app.main:app --workers 1 --timeout 900`. Gunicorn imports the Flask app without starting its internal scheduler.
-3. Set a long random `TRIGGER_TOKEN` privately on Render.
-4. In GitHub → Settings → Secrets and variables → Actions, set secret `TRIGGER_TOKEN` to the same value, variable `RENDER_SERVICE_URL` to the HTTPS web-service URL, and variable `DAILY_NEWS_SCHEDULER` to `github`.
-5. Review and merge the updated workflow into `main` when ready. Its schedule is `0 17 * * *`. GitHub can delay scheduled runs; it does not guarantee an exact 10 PM start. Public-repository schedules can be disabled after 60 days of inactivity. [GitHub schedule rules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
-6. Run the workflow manually once and check the inbox. It warms the health endpoint with retries, then makes a single authenticated delivery request. The email request is deliberately not retried after a timeout because a retry could send a duplicate digest. Before manually retrying a failed request, inspect service logs and the inbox.
-
-The new `/trigger-news` and `/logs` routes require `Authorization: Bearer <TRIGGER_TOKEN>`. A root health response remains public and reports liveness only. Do not mix the new protected app with the old unauthenticated workflow.
-
-## Troubleshooting
-
-| Symptom | Check |
-|---|---|
-| Ollama connection/model failure | Remote URL, gateway authentication, server uptime and `ollama list` on that host |
-| SMTP timeout on free web service | Free Render's SMTP restrictions; move to the selected paid Cron setup |
-| SMTP authentication failure | Provider login/app password, sender and STARTTLS settings |
-| No news, job fails | NewsAPI key, rate limits and returned article availability |
-| Inference timeout | Host resources and `LLM_TIMEOUT`; individual articles can fall back to source text after inference failure |
-| Multiple emails | Old GitHub workflow, Render Cron and local app running simultaneously |
-| No GitHub schedule activity | Default branch workflow, Actions settings and inactivity disabling |
-| HTTP 401 | Missing/mismatched `TRIGGER_TOKEN` on the app and calling workflow |
-| Healthy web page but no email | Liveness is not readiness; inspect the actual job and confirm inbox delivery |
-
-## Work completed and remaining
-
-Prepared locally: 17:00 UTC cron, explicit Pakistan timezone, corrected one-shot failure exit status, Ollama preflight and optional gateway bearer authentication, protected web endpoints, SMTP timeout, safer GitHub trigger workflow, and this deployment guide. Offline tests cover schedule conversion, authentication, readiness and failure behavior.
-
-Still required: unarchive the GitHub repository, choose the reachable Ollama host, approve the paid deployment approach, connect Render account access, publish the feature branch, create/configure the service, run a real digest, verify the inbox and retire the old schedulers. No new Render service has been created by these local edits.
+Local checks already performed: 17 offline tests pass; local Ollama/model readiness passes. Local tests do not replace the GitHub cloud run and inbox check. The repository's archived state currently blocks publication, and account connections/secrets still need setup.
