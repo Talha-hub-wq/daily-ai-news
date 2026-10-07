@@ -12,7 +12,7 @@ class NewsScheduler:
     def __init__(self):
         self.scheduled_jobs = []
     
-    def schedule_daily(self, time_str: str, job_func: Callable) -> None:
+    def schedule_daily(self, time_str: str, job_func: Callable, timezone: str = "Asia/Karachi") -> None:
         """Schedule a job to run daily at specified time.
         
         Args:
@@ -20,8 +20,9 @@ class NewsScheduler:
             job_func: Function to execute
         """
         try:
-            schedule.every().day.at(time_str).do(job_func)
-            logger.info(f"Scheduled daily job at {time_str}")
+            job = schedule.every().day.at(time_str, timezone).do(job_func)
+            self.scheduled_jobs.append(job)
+            logger.info(f"Scheduled daily job at {time_str} ({timezone})")
         except Exception as e:
             logger.error(f"Error scheduling job: {e}")
             raise
