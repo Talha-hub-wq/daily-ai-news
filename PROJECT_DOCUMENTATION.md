@@ -1,8 +1,8 @@
 # Daily AI & World News — Complete Project Documentation and Analysis
 
-**Review date:** October 6, 2026 (Asia/Karachi)  
-**Active branch:** `ollama-with-AI-News-Agent`  
-**Project root:** `D:\daily AI news`  
+**Review date:** October 6, 2026 (Asia/Karachi)
+**Active branch:** `ollama-with-AI-News-Agent`
+**Project root:** `D:\daily AI news`
 **Scope:** Current application source, configuration, email template, deployment files, both existing workflows, all 17 existing Markdown documents, environment variable names, local Python environments, Git tracking status, and a sanitized aggregate review of the existing log.
 
 This document consolidates the project into one reference. Implementation details come from the current working tree, including uncommitted changes. Older guides describe earlier versions and sometimes contradict the code. External hosting facts are linked to official documentation where verified. Credential values are intentionally excluded.
@@ -11,6 +11,7 @@ This document consolidates the project into one reference. Implementation detail
 
 The sections below retain the October 6 review context. For current Render setup, use [RENDER_REDEPLOYMENT_GUIDE.md](RENDER_REDEPLOYMENT_GUIDE.md) and [README.md](README.md); this update supersedes older scheduling, authentication and failure-status findings in this report.
 
+- Deployment changes were committed locally, but GitHub rejected the feature-branch push because the repository is archived/read-only. Unarchiving is required before publication.
 - Existing public Render web service responded after waking, advertising the old `13:25` server-local schedule. Recent available daily GitHub runs were failures in June; successful ongoing email delivery has not been verified.
 - Prepared Render Cron `daily-ai-news-digest` uses `0 17 * * *` (10 PM Pakistan time), the feature branch and paid plan `0.5c-512mb`. It requires a separately hosted, reachable Ollama server.
 - Internal scheduling defaults to `22:00` / `Asia/Karachi`, with explicit timezone validation and the pytz dependency.

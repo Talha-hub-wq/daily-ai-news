@@ -6,6 +6,7 @@ Reviewed October 7, 2026. Target branch: `ollama-with-AI-News-Agent`.
 
 - [Existing Render web service](https://daily-ai-news-merl.onrender.com/) returned HTTP 200 after a cold-start timeout. Its response still advertised `13:25 (server local time)` and did not contain the new Ollama fields. This confirms that the old web app can start, not that it can fetch, summarize, or deliver email.
 - The remote log endpoint contained startup entries only during this inspection. Previous email delivery cannot be established from those entries.
+- A feature-branch push was rejected with HTTP 403: **the GitHub repository is archived and read-only**. It must be unarchived before publishing or redeploying this code.
 - The public GitHub repository's last push was May 7, 2026. Only `main` was published when checked; the Ollama feature branch was still local.
 - The published daily workflow used `25 13 * * *`: 6:25 PM Pakistan time, not 10 PM. Its latest five available runs, June 12–16, failed. [Latest daily run](https://github.com/Talha-hub-wq/daily-ai-news/actions/runs/27638226768).
 - Latest available keep-alive runs were June 17. Success there only establishes an HTTP request succeeded. It does not establish that email was sent. GitHub reported the workflows as active, but no recent scheduled execution was visible. The cause of the failures or missing runs was not established.
@@ -38,7 +39,9 @@ The small Render Cron instance runs the Python news agent only; it is not sized 
 
 ## Step 2 — publish the prepared feature branch
 
-Render can only deploy code available in GitHub. Current local edits have not been automatically committed or pushed by this guide.
+Render can only deploy code available in GitHub. The deployment changes have been committed locally on the feature branch. Publishing was attempted but GitHub rejected it because the repository is archived.
+
+First open GitHub repository **Settings ? General ? Danger Zone ? Unarchive this repository** (owner/admin access required), follow GitHub's confirmation, then push the branch. If the account cannot unarchive it, use a new repository you control and connect that repository to Render instead.
 
 ```powershell
 Set-Location 'D:\daily AI news'
@@ -50,7 +53,8 @@ The branch should be `ollama-with-AI-News-Agent`. Review changes, then stage the
 
 ```powershell
 git diff --cached
-git commit -m "Configure Ollama news agent for daily Render cron"
+# Only if there are further reviewed changes to commit:
+git commit -m "Update Render deployment configuration"
 git push -u origin ollama-with-AI-News-Agent
 ```
 
@@ -172,4 +176,4 @@ The new `/trigger-news` and `/logs` routes require `Authorization: Bearer <TRIGG
 
 Prepared locally: 17:00 UTC cron, explicit Pakistan timezone, corrected one-shot failure exit status, Ollama preflight and optional gateway bearer authentication, protected web endpoints, SMTP timeout, safer GitHub trigger workflow, and this deployment guide. Offline tests cover schedule conversion, authentication, readiness and failure behavior.
 
-Still required: choose the reachable Ollama host, approve the paid deployment approach, connect Render account access, publish the feature branch, create/configure the service, run a real digest, verify the inbox and retire the old schedulers. No new Render service has been created by these local edits.
+Still required: unarchive the GitHub repository, choose the reachable Ollama host, approve the paid deployment approach, connect Render account access, publish the feature branch, create/configure the service, run a real digest, verify the inbox and retire the old schedulers. No new Render service has been created by these local edits.

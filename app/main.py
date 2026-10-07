@@ -79,7 +79,7 @@ def send_daily_news():
         # # Step 1a: Fetch Google Search news
         # logger.info("Fetching Google world news...")
         # world_news  = google_search("latest world news 2026", 5)
-        # logger.info(f"Fetched {len(world_news)} Google Search news") 
+        # logger.info(f"Fetched {len(world_news)} Google Search news")
 
         # # Step 1a: Fetch Google Search news
         # logger.info("Fetching twitter  news...")
@@ -91,7 +91,7 @@ def send_daily_news():
         logger.info("Fetching HackerNews tech stories...")
         hackernews = get_hackernews_tech_stories(5)
         logger.info(f"Fetched {len(hackernews)} HackerNews stories")
-        
+
         # Step 1c: Fetch Nitter tweets
         logger.info("Fetching Nitter tweets...")
         nitter_tweets = get_nitter_tweets("AI tools OR machine learning", 5)
