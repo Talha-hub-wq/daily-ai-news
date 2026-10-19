@@ -12,6 +12,16 @@ from app.scheduler import NewsScheduler
 
 
 class DeploymentTests(unittest.TestCase):
+    def test_direct_render_start_does_not_start_a_second_scheduler(self):
+        with patch.dict(main.os.environ, {"RENDER": "true"}), \
+             patch.object(main, "validate_config"), \
+             patch.object(main.threading, "Thread") as thread, \
+             patch.object(main.app, "run") as serve, \
+             patch.object(main.sys, "argv", ["main.py"]):
+            main.main()
+        thread.assert_not_called()
+        serve.assert_called_once()
+
     def test_render_health_does_not_claim_an_internal_schedule(self):
         with patch.dict(main.os.environ, {"RENDER": "true", "RENDER_GIT_COMMIT": "test-commit"}):
             response = main.app.test_client().get("/").get_json()

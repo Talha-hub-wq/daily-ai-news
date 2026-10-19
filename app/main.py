@@ -242,12 +242,14 @@ def main():
                     sys.exit(1)
                 return
 
-        # START SCHEDULER THREAD
-        scheduler_thread = threading.Thread(target=start_scheduler)
-        scheduler_thread.daemon = True
-        scheduler_thread.start()
-
-        logger.info("Scheduler thread started")
+        # Render serves status only; GitHub Actions owns the daily email job.
+        if os.getenv("RENDER") == "true":
+            logger.info("Render status service: internal email scheduler disabled")
+        else:
+            scheduler_thread = threading.Thread(target=start_scheduler)
+            scheduler_thread.daemon = True
+            scheduler_thread.start()
+            logger.info("Scheduler thread started")
 
         # START FLASK
         port = int(os.getenv("PORT", 5000))
