@@ -7,6 +7,16 @@
 
 This document consolidates the project into one reference. Implementation details come from the current working tree, including uncommitted changes. Older guides describe earlier versions and sometimes contradict the code. External hosting facts are linked to official documentation where verified. Credential values are intentionally excluded.
 
+## October 19 delivery-timing correction
+
+The live default branch remained on the old Render-trigger workflow because PR #1 was unmerged. Daily runs from October 7?17 failed; the October 18 success ended at 21:43:56 Pakistan time, matching the supplied screenshot. This is evidence of missed runs, not proof of several days of mail-server delay.
+
+With explicit approval, encrypted Actions secrets were configured, duplicate keep-alive schedules disabled, and [a real cloud pipeline/email test passed](https://github.com/Talha-hub-wq/daily-ai-news/actions/runs/39234426654). The corrected workflow prepares at `45 16 * * *` (21:45 PKT); `app/delivery_time.py` holds scheduled SMTP delivery until 22:00 and refuses sending after 23:00. Manual tests bypass the wait. New dated subjects, timezone-aware Date headers, unique Message-IDs and generation timestamps identify each actual Pakistan-day digest. Unrendered Twitter work was removed from the sending path. Render health now identifies the external scheduler and deployed commit instead of claiming an internal timer is active. These facts supersede earlier pending-approval/schedule descriptions below.
+
+## Live deployment progress ? October 7
+
+Repository unarchived and feature branch published at `f32ceff`. [Draft PR #1](https://github.com/Talha-hub-wq/daily-ai-news/pull/1) awaits cloud validation before merge. No Actions secrets are configured. Automatic approval review requires explicit approval for credential transfer, old-workflow disabling and one real email test. Render connection/redeployment is pending. Earlier archived-state findings below describe the state before these actions.
+
 ## Current free-tier deployment decision
 
 The user confirmed that hosting must stay free and their PC will be off. This supersedes the paid Cron proposal in the earlier review below. The current [deployment guide](RENDER_REDEPLOYMENT_GUIDE.md) describes the selected setup:

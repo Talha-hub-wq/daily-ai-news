@@ -12,6 +12,13 @@ from app.scheduler import NewsScheduler
 
 
 class DeploymentTests(unittest.TestCase):
+    def test_render_health_does_not_claim_an_internal_schedule(self):
+        with patch.dict(main.os.environ, {"RENDER": "true", "RENDER_GIT_COMMIT": "test-commit"}):
+            response = main.app.test_client().get("/").get_json()
+        self.assertEqual(response["delivery_backend"], "github_actions")
+        self.assertEqual(response["deployment_commit"], "test-commit")
+        self.assertEqual(response["next_run"], "Managed by GitHub Actions")
+
     def test_pakistan_schedule_resolves_to_1700_utc(self):
         scheduler = NewsScheduler()
         scheduler.schedule_daily("22:00", lambda: None)

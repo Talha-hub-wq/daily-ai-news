@@ -116,7 +116,6 @@ class PipelineTests(unittest.TestCase):
         with patch.object(main, "NewsFetcher") as fetcher, \
              patch.object(main, "get_hackernews_tech_stories", return_value=[]), \
              patch.object(main, "get_nitter_tweets", return_value=[]), \
-             patch.object(main, "get_top_twitter_news", return_value=[]), \
              patch("app.summarizer.create_llm_provider") as factory, \
              patch.object(main, "EmailSender") as sender, \
              patch.object(main, "logger"):

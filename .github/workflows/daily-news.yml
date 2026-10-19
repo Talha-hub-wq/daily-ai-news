@@ -2,8 +2,9 @@ name: Daily AI News Email
 
 on:
   schedule:
-    # 17:00 UTC = 10 PM Pakistan time. GitHub may delay scheduled starts.
-    - cron: '0 17 * * *'
+    # Prepare at 21:45 PKT, then hold delivery until 22:00 PKT (17:00 UTC).
+    # GitHub may delay the start; --scheduled rejects runs outside the window.
+    - cron: '45 16 * * *'
   workflow_dispatch:
 
 permissions:
@@ -81,4 +82,19 @@ jobs:
         run: |
           python app/main.py --check-services
           # No automatic delivery retry: a timeout may occur after SMTP acceptance.
-          python app/main.py --run-once
+          if [ "$GITHUB_EVENT_NAME" = schedule ]; then
+            python app/main.py --run-once --scheduled
+          else
+            python app/main.py --run-once
+          fi
+      - name: Record delivery time
+        run: |
+          python - <<'PY'
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          import os
+          now = datetime.now(ZoneInfo('Asia/Karachi'))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write(f'Digest completed at {now:%Y-%m-%d %H:%M:%S} Pakistan time.\n')
+              summary.write('Scheduled SMTP target: 22:00 Asia/Karachi. Manual tests send immediately.\n')
+          PY

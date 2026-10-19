@@ -1,16 +1,28 @@
 # Free deployment: daily AI news while your PC is off
 
-Updated October 7, 2026. Branch: `ollama-with-AI-News-Agent`.
+Updated October 19, 2026. Branch: `ollama-with-AI-News-Agent`.
+
+## October 19 diagnosis and correction
+
+The production default branch still used the old `25 13 * * *` schedule (6:25 PM Pakistan time) and called the Render endpoint. The replacement draft PR had never been merged; GitHub Actions had no sending credentials. Daily runs from October 7?17 failed. The October 18 run finished at **21:43:56 Pakistan time**, matching the screenshot's 9:43 PM message. These records establish missed runs and variable start times; they do not establish that Gmail queued a message for 3?4 days. Original email Received headers would be needed to prove mail-server delivery latency.
+
+After explicit user approval on October 19, the four private news/email values were encrypted into repository Actions secrets and both old keep-alive workflows were disabled. [The first real cloud email test succeeded](https://github.com/Talha-hub-wq/daily-ai-news/actions/runs/39234426654). This verifies runner setup, Ollama, collection, summarization and SMTP submission; inbox receipt remains a recipient-side check.
+
+The timing correction starts preparation at **21:45 Pakistan time** (`45 16 * * *` UTC), then `--scheduled` holds SMTP delivery until **22:00 Pakistan time**. Scheduled mode allows up to **23:00** for scheduler/processing delay. Outside that window it fails visibly and sends no stale next-day digest. Manual tests send immediately. A missed/out-of-window job is not automatically replayed later.
+
+Email subjects now include the Pakistan digest date, and each message has explicit Date, Message-ID and generation-time fields. The unused Twitter list is no longer fetched/summarized before email, reducing avoidable work.
+
+GitHub's free scheduler still provides no exact-start guarantee. Starting preparation earlier absorbs modest queue/processing delays, but cannot guarantee a daily 22:00 inbox receipt or eliminate platform outages. Watch Actions failures and the first scheduled run.
 
 ## The selected setup
 
 You confirmed that you use the free tier and need delivery while your PC is off. The setup is therefore:
 
 ```text
-GitHub schedule: 17:00 UTC / 10 PM Pakistan time
+GitHub preparation: 16:45 UTC / 9:45 PM Pakistan time
     -> standard GitHub-hosted Ubuntu runner
     -> install Ollama and pull qwen3:1.7b
-    -> fetch articles, summarize, send email via SMTP
+    -> fetch articles, summarize, wait until 10 PM Pakistan time, send via SMTP
     -> runner exits
 
 Render Free web service -> public status endpoint (allowed to sleep)
@@ -20,7 +32,7 @@ The daily email job does not call Render, so Render sleeping does not stop deliv
 
 Standard GitHub-hosted runners are free for public repositories. Your repository was public when checked; private repositories have a free allowance and different billing rules. This workflow uses a standard runner, not a paid larger runner. [GitHub billing](https://docs.github.com/en/actions/concepts/billing-and-usage).
 
-GitHub schedules may start late, and a digest needs additional time to download the model, fetch and summarize news. This is a 10 PM scheduled start, not guaranteed inbox receipt at exactly 10 PM. Public repository schedules can be disabled after 60 days of inactivity. [GitHub schedule rules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+GitHub schedules may start late, and a digest needs additional time to download the model, fetch and summarize news. This is a 9:45 PM preparation start with a 10 PM send target, not guaranteed inbox receipt at exactly 10 PM. Public repository schedules can be disabled after 60 days of inactivity. [GitHub schedule rules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 
 Free Render blocks outbound SMTP ports 25, 465 and 587, and does not offer free Cron Jobs. That is why the existing SMTP pipeline runs on GitHub instead of inside free Render. [Render free limitations](https://render.com/docs/free).
 
@@ -31,7 +43,7 @@ Free Render blocks outbound SMTP ports 25, 465 and 587, and does not offer free 
 - The latest five available daily GitHub runs, June 12?16, failed. [Latest daily run](https://github.com/Talha-hub-wq/daily-ai-news/actions/runs/27638226768).
 - The old YAML used `25 13 * * *`, which means 6:25 PM Pakistan time, not 10 PM. There were duplicate scheduled keep-alive workflows.
 - The remote repository's last push was May 7 and only `main` was published when inspected.
-- Publishing the prepared branch failed: GitHub returned HTTP 403 stating that **the repository is archived and read-only**. No new branch or deployment was published.
+- Publishing the prepared branch failed: GitHub returned HTTP 403 stating that **the repository is archived and read-only**. The repository was subsequently unarchived and the feature branch published; see live progress above. No Render deployment has happened yet.
 
 The new workflow and free Render Blueprint are prepared locally. The earlier paid Cron proposal has been replaced; no paid resource was created.
 
@@ -102,7 +114,7 @@ The workflow follows [Ollama's Linux installation instructions](https://docs.oll
 After the feature-branch test succeeds:
 
 1. Review a pull request from `ollama-with-AI-News-Agent` into `main` and merge the tested changes.
-2. Verify `.github/workflows/daily-news.yml` on `main` contains `0 17 * * *`.
+2. Verify `.github/workflows/daily-news.yml` on `main` contains `45 16 * * *`.
 3. Ensure `DAILY_NEWS_SCHEDULER` is not set to `disabled`.
 4. Remove/disable both old scheduled keep-alive workflows. The prepared commit deletes redundant files and changes the remaining health workflow to manual only.
 5. Monitor the first scheduled run and inbox delivery. GitHub runs schedules from the default branch; pushing the feature branch alone does not activate its schedule.
@@ -137,10 +149,10 @@ Account access through the suggested Render integration is still needed for the 
 ## Step 7 ? verify and monitor
 
 - GitHub run finishes successfully and the inbox receives the digest.
-- The scheduled workflow exists on `main`, at `0 17 * * *`.
+- The scheduled workflow exists on `main`, at `45 16 * * *` for preparation, with the 22:00 delivery gate in code.
 - The next day, confirm a scheduled run and actual inbox delivery; the expected time includes startup and processing delays.
 - Render's status URL can sleep without affecting the GitHub email job.
 - If the job fails, inspect Actions logs for model download, readiness, news fetch, inference timeout or SMTP authentication errors. A healthy Render URL does not resolve those failures.
 - Do not enable both this full-pipeline workflow and a separate HTTP-trigger scheduler.
 
-Local checks already performed: 17 offline tests pass; local Ollama/model readiness passes. Local tests do not replace the GitHub cloud run and inbox check. The repository's archived state currently blocks publication, and account connections/secrets still need setup.
+Local checks cover provider/configuration behavior, Pakistan timezone conversion, scheduled delivery windows, stale-run rejection and dated email headers; local Ollama/model readiness passes. Local tests do not replace the GitHub cloud run and inbox check. The repository is now unarchived and the branch published. Account connections/secrets, the cloud email test and schedule activation still need setup.

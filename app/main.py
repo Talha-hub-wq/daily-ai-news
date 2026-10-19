@@ -34,9 +34,9 @@ from app.news_fetcher import NewsFetcher
 from app.summarizer import NewsSummarizer
 from app.email_sender import EmailSender
 from app.scheduler import NewsScheduler
+from app.delivery_time import scheduled_delivery_target, wait_until_delivery
 from app.hackernews_scraper import get_hackernews_tech_stories
 from app.nitter_scraper import get_nitter_tweets
-from app.twitter_scraper import get_top_twitter_news
 
 # -------------------- LOGGING --------------------
 
@@ -57,7 +57,7 @@ app = Flask(__name__)
 
 # -------------------- MAIN JOB --------------------
 
-def send_daily_news():
+def send_daily_news(delivery_target=None):
     """Fetch, summarize and send news email."""
     try:
         logger.info("=" * 50)
@@ -95,10 +95,7 @@ def send_daily_news():
         # Step 1c: Fetch Nitter tweets
         logger.info("Fetching Nitter tweets...")
         nitter_tweets = get_nitter_tweets("AI tools OR machine learning", 5)
-        twitter_news = get_top_twitter_news("AI OR ChatGPT OR OpenAI lang:en min_faves:50", 5)
-        logger.info(f"Fetched {len(twitter_news)} Twitter news")
-
-        logger.info(f"Fetched {len(ai_news)} AI news, {len(world_news)} world news, {len(hackernews)} HackerNews stories, {len(twitter_news)} Twitter news")
+        logger.info(f"Fetched {len(ai_news)} AI news, {len(world_news)} world news, {len(hackernews)} HackerNews stories")
 
         if not ai_news and not world_news:
             logger.warning("No news found. Email not sent.")
@@ -109,10 +106,12 @@ def send_daily_news():
         world_news = summarizer.summarize_articles(world_news)
         hackernews = summarizer.summarize_articles(hackernews)
         nitter_tweets = summarizer.summarize_articles(nitter_tweets)
-        twitter_news = summarizer.summarize_articles(twitter_news)
         logger.info("Articles summarized")
 
         # Step 3: Send Email
+        if delivery_target is not None:
+            logger.info("Digest ready; delivery target is %s", delivery_target.isoformat())
+            wait_until_delivery(delivery_target)
         email_sender = EmailSender(
             sender=EMAIL_SENDER,
             password=EMAIL_PASSWORD,
@@ -128,7 +127,6 @@ def send_daily_news():
             world_news=world_news,
             hackernews=hackernews,
             nitter_tweets=nitter_tweets,
-            # twitter_news=twitter_news,
             html_template=str(template_path)
         )
 
@@ -163,10 +161,16 @@ def start_scheduler():
 
 @app.route('/', methods=['GET'])
 def health_check():
+    external_scheduler = os.getenv("RENDER") == "true"
     return jsonify({
         "status": "healthy",
         "service": "Daily AI News Automation",
-        "next_run": f"Daily at {SCHEDULE_TIME} ({SCHEDULE_TIMEZONE})",
+        "next_run": (
+            "Managed by GitHub Actions" if external_scheduler
+            else f"Daily at {SCHEDULE_TIME} ({SCHEDULE_TIMEZONE})"
+        ),
+        "delivery_backend": "github_actions" if external_scheduler else "local",
+        "deployment_commit": os.getenv("RENDER_GIT_COMMIT"),
         "llm_provider": LLM_PROVIDER,
         "llm_model": LLM_MODEL,
         "readiness_checked": False
@@ -228,8 +232,13 @@ def main():
                 logger.info("Ollama readiness check passed; no news fetched or email sent")
                 return
             if sys.argv[1] == "--run-once":
-                logger.info("Running in test mode...")
-                if not send_daily_news():
+                logger.info("Running one daily digest")
+                if "--scheduled" in sys.argv[2:]:
+                    target = scheduled_delivery_target(SCHEDULE_TIME, SCHEDULE_TIMEZONE)
+                    success = send_daily_news(delivery_target=target)
+                else:
+                    success = send_daily_news()
+                if not success:
                     sys.exit(1)
                 return
 

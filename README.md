@@ -126,15 +126,17 @@ Actual story/post content takes priority over description metadata in summaries.
 
 Trigger and log routes require `Authorization: Bearer <TRIGGER_TOKEN>`. A blank token disables access. The root response reports liveness only. The pipeline checks Ollama/model availability before fetching news; individual inference failures can still use source-text fallbacks.
 
-The GitHub email workflow uses `0 17 * * *` (10 PM Pakistan time) and runs the full pipeline, including Ollama, on a standard cloud runner. It runs from the default branch; setting repository variable `DAILY_NEWS_SCHEDULER=disabled` pauses scheduled sends. GitHub may delay scheduled starts. The keep-alive workflow is manual only. Use one scheduler to avoid duplicate sends.
+The GitHub email workflow starts preparation at `45 16 * * *` (9:45 PM Pakistan time), then holds the digest until 10 PM Pakistan time and runs the full pipeline, including Ollama, on a standard cloud runner. It runs from the default branch; setting repository variable `DAILY_NEWS_SCHEDULER=disabled` pauses scheduled sends. GitHub may delay scheduled starts. Scheduled mode permits up to one hour of lateness; later runs fail without sending a stale digest. The keep-alive workflow is manual only. Use one scheduler to avoid duplicate sends.
 
 ## Deployment
+
+Every digest includes its Pakistan calendar date in the subject, a timezone-aware Date header, and its actual generation time. Different dates therefore have different subjects.
 
 The selected deployment stays free and works while your PC is off. GitHub Actions installs Ollama, pulls `qwen3:1.7b`, fetches and summarizes news, and sends SMTP email. Render hosts the web/status service on its free plan and can sleep without affecting the email job. Your local model remains `qwen3:8b`.
 
 Follow [the full deployment guide](RENDER_REDEPLOYMENT_GUIDE.md) to unarchive the GitHub repository, publish the feature branch, add Actions secrets, test delivery, merge the scheduled workflow into the default branch, and redeploy the existing free Render service.
 
-Standard GitHub-hosted runners are free for public repositories; private repositories have separate allowances. [GitHub Actions billing](https://docs.github.com/en/actions/concepts/billing-and-usage). The first real workflow run is still required to verify CPU inference performance and inbox delivery.
+Standard GitHub-hosted runners are free for public repositories; private repositories have separate allowances. [GitHub Actions billing](https://docs.github.com/en/actions/concepts/billing-and-usage). A real cloud run succeeded on October 19, including the email step; inbox receipt must be confirmed by the recipient.
 
 [render.yaml](render.yaml) now describes a free web/status service, with HTTP delivery/log access disabled by a blank `TRIGGER_TOKEN`. It does not run Ollama or send email. Free Render web services block the SMTP ports used by this sender. [Render free-service limitations](https://render.com/docs/free).
 
