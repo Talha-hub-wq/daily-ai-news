@@ -1,46 +1,22 @@
-name: Keep Render Service Alive
+name: Render Health Check (Manual)
 
-# Run every 30 minutes to prevent Render from sleeping
+# A daily Render Cron Job does not need an always-on web service or keep-alive pings.
 on:
-  schedule:
-    # Every 1 minute (GitHub Actions minimum)
-    - cron: '* * * * *'
-  
-  workflow_dispatch:  # Manual trigger option
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  keep-alive:
-    name: Keep Service Alive
+  health-check:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 10
+    env:
+      SERVICE_URL: ${{ vars.RENDER_SERVICE_URL }}
     steps:
-      - name: Health Check
+      - name: Inspect web service health
+        shell: bash
         run: |
-          SERVICE_URL="https://daily-ai-news-merl.onrender.com"
-          
-          echo "🔄 Pinging health endpoint..."
-          echo "URL: $SERVICE_URL/"
-          
-          # Try 2 times with longer timeout
-          for attempt in 1 2; do
-            echo "Attempt $attempt/2..."
-            
-            RESPONSE=$(curl -s -w '\n%{http_code}' -X GET "$SERVICE_URL/" \
-              --connect-timeout 30 \
-              --max-time 120 2>&1)
-            
-            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-            
-            echo "Response Code: $HTTP_CODE"
-            
-            if [ "$HTTP_CODE" = "200" ]; then
-              echo "✅ Service is alive!"
-              exit 0
-            else
-              echo "⏳ Service not ready, retrying..."
-              sleep 5
-            fi
-          done
-          
-          echo "⚠️ Service not responding after retries"
-          exit 1
+          test -n "$SERVICE_URL" || { echo 'Set RENDER_SERVICE_URL'; exit 1; }
+          case "$SERVICE_URL" in https://*) ;; *) echo 'Service URL must use HTTPS'; exit 1 ;; esac
+          curl --fail --silent --show-error --connect-timeout 30 --max-time 120             --retry 3 --retry-delay 10 --retry-all-errors "${SERVICE_URL%/}/"

@@ -1,8 +1,13 @@
 import smtplib
 import logging
+from datetime import datetime, timezone
+from email.utils import format_datetime, make_msgid
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Dict
+import pytz
+
+from config.settings import SCHEDULE_TIMEZONE
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +32,8 @@ class EmailSender:
     ) -> bool:
         """Send formatted news email."""
         try:
+            generated_at = datetime.now(timezone.utc).astimezone(pytz.timezone(SCHEDULE_TIMEZONE))
+            digest_date = generated_at.strftime("%Y-%m-%d")
             if hackernews is None:
                 hackernews = []
             if nitter_tweets is None:
@@ -38,10 +45,18 @@ class EmailSender:
             
             # Build email content
             html_content = self._build_html_content(template, ai_news, world_news, hackernews, nitter_tweets)
+            html_content = html_content.replace("{{ DIGEST_DATE }}", digest_date)
+            html_content = html_content.replace(
+                "{{ GENERATED_AT }}", generated_at.strftime("%Y-%m-%d %I:%M %p %Z")
+            )
             
             # Create message
             message = MIMEMultipart("alternative")
-            message["Subject"] = "Daily AI News + Tech Stories + Trending Tweets"
+            message["Subject"] = f"Daily AI & World News - {digest_date}"
+            message["Date"] = format_datetime(generated_at)
+            message["Message-ID"] = make_msgid(idstring=f"daily-news.{digest_date}")
+            message["X-Digest-Timezone"] = SCHEDULE_TIMEZONE
+            message["X-Digest-Generated-At"] = generated_at.isoformat()
             message["From"] = self.sender
             message["To"] = recipient
             
@@ -52,7 +67,7 @@ class EmailSender:
             # Send email
             self._send_smtp(recipient, message)
             
-            logger.info(f"Email sent successfully to {recipient}")
+            logger.info("SMTP accepted digest for %s, generated at %s", digest_date, generated_at.isoformat())
             return True
         except FileNotFoundError:
             logger.error(f"Email template not found: {html_template}")
@@ -173,7 +188,7 @@ class EmailSender:
     
     def _send_smtp(self, recipient: str, message: MIMEMultipart) -> None:
         """Send email via SMTP."""
-        with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+        with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=30) as server:
             server.starttls()
             server.login(self.sender, self.password)
             server.sendmail(self.sender, recipient, message.as_string())

@@ -1,28 +1,19 @@
+# FREE web/status deployment. GitHub Actions runs Ollama and sends daily email.
+# No SMTP credentials or local model host are needed by this status service.
 services:
-  - type: cron
-    name: daily-ai-news
-    runtime: python3
+  - type: web
+    name: daily-ai-news-status
+    branch: ollama-with-AI-News-Agent
+    runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python app/main.py --run-once
-    schedule: "0 22 * * *"  # Daily at 10:00 PM UTC
+    startCommand: gunicorn app.main:app --workers 1 --bind 0.0.0.0:$PORT
+    healthCheckPath: /
     envVars:
-      - key: OPENAI_API_KEY
-        scope: build
-      - key: NEWSAPI_KEY
-        scope: build
-      - key: EMAIL_SENDER
-        scope: build
-      - key: EMAIL_PASSWORD
-        scope: build
-      - key: EMAIL_RECIPIENT
-        scope: build
       - key: SCHEDULE_TIME
         value: "22:00"
-        scope: build
-      - key: SMTP_SERVER
-        value: "smtp.gmail.com"
-        scope: build
-      - key: SMTP_PORT
-        value: "587"
-        scope: build
+      - key: SCHEDULE_TIMEZONE
+        value: Asia/Karachi
+      # Disable HTTP delivery/log access: the free web host is for status only.
+      - key: TRIGGER_TOKEN
+        value: ""

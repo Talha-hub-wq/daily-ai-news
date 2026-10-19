@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Build script for Render deployment
 echo "Installing dependencies..."
