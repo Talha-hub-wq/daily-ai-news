@@ -37,6 +37,7 @@ wheels/
 
 # Logs
 logs/
+.delivery-state/
 *.log
 
 # OS

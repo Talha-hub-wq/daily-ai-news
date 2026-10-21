@@ -24,7 +24,7 @@ class DeliveryWindowTests(unittest.TestCase):
         self.assertEqual(target.day, 19)
 
     def test_late_or_next_day_schedule_cannot_send_stale_digest(self):
-        for hour in (15, 18, 20):
+        for hour in (15, 20):
             now = datetime(2026, 10, 19, hour, 1, tzinfo=timezone.utc)
             with self.subTest(hour=hour), self.assertRaises(RuntimeError):
                 scheduled_delivery_target("22:00", "Asia/Karachi", now)
@@ -33,6 +33,17 @@ class DeliveryWindowTests(unittest.TestCase):
         now = datetime(2026, 10, 19, 17, 15, tzinfo=timezone.utc)
         target = scheduled_delivery_target("22:00", "Asia/Karachi", now)
         wait_until_delivery(target, clock=lambda: now, sleep=Mock())
+
+    def test_three_hour_delay_is_caught_up_instead_of_losing_the_email(self):
+        now = datetime(2026, 10, 21, 9, 40, tzinfo=timezone.utc)
+        target = scheduled_delivery_target("11:40", "Asia/Karachi", now)
+        self.assertEqual((target.hour, target.minute), (11, 40))
+        wait_until_delivery(target, clock=lambda: now, sleep=Mock())
+
+    def test_morning_target_is_0640_utc(self):
+        now = datetime(2026, 10, 21, 6, 25, tzinfo=timezone.utc)
+        target = scheduled_delivery_target("11:40", "Asia/Karachi", now)
+        self.assertEqual(target.astimezone(timezone.utc).strftime("%H:%M"), "06:40")
 
     def test_waits_until_target_without_sending_early(self):
         target = datetime(2026, 10, 19, 17, tzinfo=timezone.utc)
@@ -45,7 +56,8 @@ class DeliveryWindowTests(unittest.TestCase):
         self.assertEqual([call.args[0] for call in sleep.call_args_list], [30, 15])
 
     def test_slow_preparation_cannot_roll_into_next_day(self):
-        target = datetime(2026, 10, 19, 17, tzinfo=timezone.utc)
+        import pytz
+        target = datetime(2026, 10, 19, 17, tzinfo=timezone.utc).astimezone(pytz.timezone("Asia/Karachi"))
         with self.assertRaises(RuntimeError):
             wait_until_delivery(target, clock=lambda: target + timedelta(hours=3))
 

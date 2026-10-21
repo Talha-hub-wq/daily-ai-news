@@ -1,5 +1,12 @@
 # Free deployment: daily AI news while your PC is off
 
+## October 21 correction ? 11:40 AM Pakistan test
+
+The October 19?20 scheduled runs started more than three hours late. Their logs show that the previous one-hour delivery cutoff rejected them before collecting news or sending mail. That cutoff is removed. The current target is **11:40 AM Asia/Karachi** (06:40 UTC), with frequent checks every 15 minutes instead of a single daily trigger. Delayed checks catch up on the same local day; the daily cached delivery ledger prevents ordinary repeated submissions. Preparation failures before SMTP can be retried by the next check. If SMTP acceptance is uncertain, the saved `submitting` record blocks blind retries and requires inbox/log inspection. Cache loss or a runner crash before persistence remains a limitation; SMTP does not provide an atomic exactly-once transaction with Actions cache.
+
+The workflow's `scheduled` manual-dispatch input exercises the same 11:40 timing gate. No OpenAI provider or paid service is introduced. GitHub cron itself still has no exact-time guarantee; a persistent/reliable external scheduler would be needed for a stronger timing commitment. Earlier 10 PM/one-hour-cutoff descriptions below are historical and superseded by this correction.
+
+
 Updated October 19, 2026. Branch: `ollama-with-AI-News-Agent`.
 
 ## October 19 diagnosis and correction

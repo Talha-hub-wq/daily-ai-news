@@ -5,6 +5,8 @@ from pathlib import Path
 from flask import Flask, jsonify
 import threading
 import hmac
+from datetime import datetime, timezone
+import pytz
 from flask import request
 
 # Add parent directory to path
@@ -35,6 +37,7 @@ from app.summarizer import NewsSummarizer
 from app.email_sender import EmailSender
 from app.scheduler import NewsScheduler
 from app.delivery_time import scheduled_delivery_target, wait_until_delivery
+from app.delivery_state import DeliveryState
 from app.hackernews_scraper import get_hackernews_tech_stories
 from app.nitter_scraper import get_nitter_tweets
 
@@ -57,9 +60,15 @@ app = Flask(__name__)
 
 # -------------------- MAIN JOB --------------------
 
-def send_daily_news(delivery_target=None):
+def send_daily_news(delivery_target=None, delivery_state_path=None):
     """Fetch, summarize and send news email."""
     try:
+        digest_date = (delivery_target if delivery_target is not None else
+                       datetime.now(timezone.utc).astimezone(pytz.timezone(SCHEDULE_TIMEZONE))).date()
+        state = DeliveryState(delivery_state_path, digest_date) if delivery_state_path else None
+        if state and not state.can_send():
+            logger.info("Digest for %s already submitted; skipping duplicate", digest_date)
+            return True
         logger.info("=" * 50)
         logger.info("Starting daily news update process...")
         logger.info("=" * 50)
@@ -121,6 +130,8 @@ def send_daily_news(delivery_target=None):
 
         template_path = Path(__file__).parent.parent / "templates" / "email_template.html"
 
+        if state:
+            state.mark("submitting")
         success = email_sender.send_news_email(
             recipient=EMAIL_RECIPIENT,
             ai_news=ai_news,
@@ -131,6 +142,8 @@ def send_daily_news(delivery_target=None):
         )
 
         if success:
+            if state:
+                state.mark("sent")
             logger.info("Daily news email sent successfully")
         else:
             logger.error("Failed to send email")
@@ -235,9 +248,10 @@ def main():
                 logger.info("Running one daily digest")
                 if "--scheduled" in sys.argv[2:]:
                     target = scheduled_delivery_target(SCHEDULE_TIME, SCHEDULE_TIMEZONE)
-                    success = send_daily_news(delivery_target=target)
+                    success = send_daily_news(delivery_target=target,
+                                              delivery_state_path=os.getenv("DELIVERY_STATE_PATH"))
                 else:
-                    success = send_daily_news()
+                    success = send_daily_news(delivery_state_path=os.getenv("DELIVERY_STATE_PATH"))
                 if not success:
                     sys.exit(1)
                 return
