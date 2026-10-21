@@ -1,8 +1,8 @@
 # Free deployment: daily AI news while your PC is off
 
-## Current delivery target: 2:30 PM Pakistan time
+## Current delivery target: 3:00 PM Pakistan time
 
-The daily target has been changed from 12:15 PM to **2:30 PM Asia/Karachi** (09:30 UTC). Frequent checks, same-day recovery and the per-day delivery ledger remain enabled. The October 21 timed test described below actually ran at 11:40 AM and remains historical evidence; it does not describe the new target.
+The daily target has been changed from 12:15 PM to **3:00 PM Asia/Karachi** (10:00 UTC). Frequent checks, same-day recovery and the per-day delivery ledger remain enabled. The October 21 timed test described below actually ran at 11:40 AM and remains historical evidence; it does not describe the new target.
 
 
 ## October 21 correction ? 11:40 AM Pakistan test

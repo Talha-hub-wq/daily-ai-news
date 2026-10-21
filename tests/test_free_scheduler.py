@@ -7,10 +7,10 @@ from scripts.setup_free_scheduler import build_job, safe_preview, main
 
 class FreeSchedulerTests(unittest.TestCase):
     def test_trigger_prepares_twenty_minutes_before_pakistan_target(self):
-        job = build_job("dummy-token", "14:30", "Asia/Karachi")
+        job = build_job("dummy-token", "15:00", "Asia/Karachi")
         self.assertEqual(job["schedule"]["timezone"], "Asia/Karachi")
         self.assertEqual(job["schedule"]["hours"], [14])
-        self.assertEqual(job["schedule"]["minutes"], [10])
+        self.assertEqual(job["schedule"]["minutes"], [40])
         self.assertEqual(job["requestMethod"], 1)
         self.assertTrue(json.loads(job["extendedData"]["body"])["inputs"]["scheduled"])
 

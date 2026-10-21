@@ -40,10 +40,10 @@ class DeliveryWindowTests(unittest.TestCase):
         self.assertEqual((target.hour, target.minute), (14, 30))
         wait_until_delivery(target, clock=lambda: now, sleep=Mock())
 
-    def test_afternoon_target_is_0930_utc(self):
-        now = datetime(2026, 10, 21, 9, 15, tzinfo=timezone.utc)
-        target = scheduled_delivery_target("14:30", "Asia/Karachi", now)
-        self.assertEqual(target.astimezone(timezone.utc).strftime("%H:%M"), "09:30")
+    def test_afternoon_target_is_1000_utc(self):
+        now = datetime(2026, 10, 21, 9, 45, tzinfo=timezone.utc)
+        target = scheduled_delivery_target("15:00", "Asia/Karachi", now)
+        self.assertEqual(target.astimezone(timezone.utc).strftime("%H:%M"), "10:00")
 
     def test_waits_until_target_without_sending_early(self):
         target = datetime(2026, 10, 19, 17, tzinfo=timezone.utc)
