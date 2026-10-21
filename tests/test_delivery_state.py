@@ -29,8 +29,25 @@ class DeliveryStateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "state.json"
             now = datetime.now(timezone.utc).astimezone(__import__('pytz').timezone(main.SCHEDULE_TIMEZONE))
-            DeliveryState(path, now.date()).mark("sent")
+            DeliveryState(path, now.date(), main.SCHEDULE_TIME).mark("sent")
             with patch.object(main, "NewsFetcher") as fetcher, patch.object(main, "EmailSender") as sender:
                 self.assertTrue(main.send_daily_news(delivery_state_path=str(path)))
             fetcher.assert_not_called()
             sender.assert_not_called()
+
+    def test_changing_target_time_does_not_suppress_the_new_slot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "state.json"
+            DeliveryState(path, "2026-10-21", "11:40").mark("sent")
+            new_slot = DeliveryState(path, "2026-10-21", "12:15")
+            self.assertTrue(new_slot.can_send())
+            new_slot.mark("sent")
+            self.assertFalse(DeliveryState(path, "2026-10-21", "12:15").can_send())
+
+    def test_slot_keys_are_distinct_and_stable_for_retries(self):
+        from app.delivery_time import delivery_identity
+        first = delivery_identity("2026-10-21", "11:40")
+        second = delivery_identity("2026-10-21", "12:15")
+        self.assertNotEqual(first["cache_key"], second["cache_key"])
+        self.assertNotEqual(first["state_path"], second["state_path"])
+        self.assertEqual(second, delivery_identity("2026-10-21", "12:15"))

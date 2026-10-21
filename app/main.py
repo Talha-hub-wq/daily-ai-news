@@ -65,7 +65,7 @@ def send_daily_news(delivery_target=None, delivery_state_path=None):
     try:
         digest_date = (delivery_target if delivery_target is not None else
                        datetime.now(timezone.utc).astimezone(pytz.timezone(SCHEDULE_TIMEZONE))).date()
-        state = DeliveryState(delivery_state_path, digest_date) if delivery_state_path else None
+        state = DeliveryState(delivery_state_path, digest_date, SCHEDULE_TIME) if delivery_state_path else None
         if state and not state.can_send():
             logger.info("Digest for %s already submitted; skipping duplicate", digest_date)
             return True
