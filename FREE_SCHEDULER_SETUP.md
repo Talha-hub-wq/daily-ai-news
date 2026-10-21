@@ -1,4 +1,4 @@
-# Free external scheduler for the 2:30 PM Pakistan digest
+# Free external scheduler for the 3:00 PM Pakistan digest
 
 The email pipeline works when dispatched, but GitHub's built-in cron has started jobs hours late. An external trigger avoids relying on that cron event. The application still enforces the configured Pakistan send time and prevents repeated submissions of the same date/time slot.
 
@@ -38,7 +38,7 @@ Set-Location 'D:\daily AI news'
 .\venv\Scripts\python.exe scripts/setup_free_scheduler.py
 ```
 
-This makes no external changes and prints no token values. With the current `14:30` target, the preview schedules a daily trigger at **2:10 PM Asia/Karachi**. The cloud job then prepares news and waits until **2:30 PM** before SMTP submission.
+This makes no external changes and prints no token values. With the current `15:00` target, the preview schedules a daily trigger at **2:40 PM Asia/Karachi**. The cloud job then prepares news and waits until **3:00 PM** before SMTP submission.
 
 ## 5. Create and verify the job
 
@@ -66,7 +66,7 @@ The GitHub fifteen-minute cron checks can remain as best-effort fallback. The sa
 
 Use the scheduler console's test/run control. It should receive GitHub HTTP **204**, meaning the workflow was accepted. Then inspect GitHub Actions for the new `workflow_dispatch` run, its SMTP result and actual Pakistan timestamp. Finally confirm inbox receipt. A successful cron HTTP request alone does not prove that news generation or email delivery succeeded.
 
-When testing before 2:00 PM, scheduled mode correctly skips because preparation is not due. When the current date/time slot is already sent, it correctly skips a duplicate. Monitor the first actual 2:10 PM cron event and 2:30 PM send; manual testing is not proof of a future scheduled event.
+When testing before 2:30 PM, scheduled mode correctly skips because preparation is not due. When the current date/time slot is already sent, it correctly skips a duplicate. Monitor the first actual 2:40 PM cron event and 3:00 PM send; manual testing is not proof of a future scheduled event.
 
 This improves the clock used to start the job. It does not guarantee exact inbox arrival, uninterrupted GitHub runner availability, or atomic exactly-once SMTP delivery.
 

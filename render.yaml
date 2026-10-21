@@ -11,7 +11,7 @@ services:
     healthCheckPath: /
     envVars:
       - key: SCHEDULE_TIME
-        value: "14:30"
+        value: "15:00"
       - key: SCHEDULE_TIMEZONE
         value: Asia/Karachi
       # Disable HTTP delivery/log access: the free web host is for status only.
