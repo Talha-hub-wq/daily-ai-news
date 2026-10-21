@@ -8,6 +8,16 @@ import pytz
 PREPARATION_WINDOW = timedelta(minutes=30)
 
 
+def delivery_identity(digest_date, schedule_time):
+    """A time change is a new delivery slot; retries of that slot share its ledger."""
+    day = str(digest_date)
+    datetime.strptime(day, "%Y-%m-%d")
+    slot = datetime.strptime(schedule_time, "%H:%M").strftime("%H%M")
+    return {"date": day, "slot": slot,
+            "state_path": f".delivery-state/{day}-{slot}.json",
+            "cache_key": f"news-delivery-v2-{day}-{slot}"}
+
+
 def scheduled_delivery_target(time_str, timezone_name, now=None):
     """Permit preparation shortly before the target and catch-up on the same local day."""
     now = now if now is not None else datetime.now(timezone.utc)

@@ -57,7 +57,7 @@ jobs:
           import os
           from datetime import datetime, timezone
           import pytz
-          from app.delivery_time import scheduled_delivery_target
+          from app.delivery_time import scheduled_delivery_target, delivery_identity
           from config.settings import SCHEDULE_TIME, SCHEDULE_TIMEZONE
           now = datetime.now(timezone.utc)
           date = now.astimezone(pytz.timezone(SCHEDULE_TIMEZONE)).date().isoformat()
@@ -68,7 +68,9 @@ jobs:
               except RuntimeError:
                   eligible = False
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write(f'eligible={str(eligible).lower()}\ndate={date}\nstate_path=.delivery-state/{date}.json\n')
+              output.write(f'eligible={str(eligible).lower()}\n')
+              for key, value in delivery_identity(date, SCHEDULE_TIME).items():
+                  output.write(f'{key}={value}\n')
           print(f'Pakistan date: {date}; delivery due: {eligible}; target: {SCHEDULE_TIME}')
           PY
       - name: Restore today's delivery record
@@ -77,7 +79,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .delivery-state
-          key: news-delivery-v1-${{ steps.gate.outputs.date }}
+          key: ${{ steps.gate.outputs.cache_key }}
       - name: Skip a previously submitted digest
         if: steps.gate.outputs.eligible == 'true'
         id: ready
@@ -88,7 +90,8 @@ jobs:
           python - <<'PY'
           import os
           from app.delivery_state import DeliveryState
-          state = DeliveryState(os.environ['DELIVERY_STATE_PATH'], os.environ['DIGEST_DATE'])
+          from config.settings import SCHEDULE_TIME
+          state = DeliveryState(os.environ['DELIVERY_STATE_PATH'], os.environ['DIGEST_DATE'], SCHEDULE_TIME)
           send = state.can_send()
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write(f'send={str(send).lower()}\n')
@@ -144,7 +147,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .delivery-state
-          key: news-delivery-v1-${{ steps.gate.outputs.date }}
+          key: ${{ steps.gate.outputs.cache_key }}
       - name: Record delivery status
         if: always()
         run: |
