@@ -1,5 +1,10 @@
 # Daily AI & World News — Complete Project Documentation and Analysis
 
+## Current delivery target: 12:15 PM Pakistan time
+
+The daily target has been changed from 11:40 AM to **12:15 PM Asia/Karachi** (07:15 UTC). Frequent checks, same-day recovery and the per-day delivery ledger remain enabled. The October 21 timed test described below actually ran at 11:40 AM and remains historical evidence; it does not describe the new target.
+
+
 ## October 21 correction ? 11:40 AM Pakistan test
 
 The October 19?20 scheduled runs started more than three hours late. Their logs show that the previous one-hour delivery cutoff rejected them before collecting news or sending mail. That cutoff is removed. The current target is **11:40 AM Asia/Karachi** (06:40 UTC), with frequent checks every 15 minutes instead of a single daily trigger. Delayed checks catch up on the same local day; the daily cached delivery ledger prevents ordinary repeated submissions. Preparation failures before SMTP can be retried by the next check. If SMTP acceptance is uncertain, the saved `submitting` record blocks blind retries and requires inbox/log inspection. Cache loss or a runner crash before persistence remains a limitation; SMTP does not provide an atomic exactly-once transaction with Actions cache.
