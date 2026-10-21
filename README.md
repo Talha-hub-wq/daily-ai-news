@@ -131,7 +131,7 @@ The GitHub workflow checks every 15 minutes (`7,22,37,52 * * * *` UTC). The deli
 
 ## Deployment
 
-For an independent scheduling clock, follow [the free external scheduler setup](FREE_SCHEDULER_SETUP.md). The preview command is ready; creating the external job requires a cron-job.org account/API key and a new repository-scoped GitHub Actions token. The external cron job is not created automatically by a code deployment.
+The independent cron-job.org scheduler is configured to start preparation daily at **2:40 PM Asia/Karachi** for the **3:00 PM** email target. Follow [the external scheduler setup](FREE_SCHEDULER_SETUP.md) to recreate the integration or rotate credentials. Update the existing job ID `8692525` when changing its time; deploying code alone does not update the external cron job.
 
 Every digest includes its Pakistan calendar date in the subject, a timezone-aware Date header, and its actual generation time. Different dates therefore have different subjects.
 

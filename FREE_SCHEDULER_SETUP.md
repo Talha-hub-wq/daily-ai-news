@@ -2,11 +2,13 @@
 
 The email pipeline works when dispatched, but GitHub's built-in cron has started jobs hours late. An external trigger avoids relying on that cron event. The application still enforces the configured Pakistan send time and prevents repeated submissions of the same date/time slot.
 
+The external clock was verified on October 21: cron-job.org called GitHub at **2:51:04 PM Pakistan time** and received HTTP **204**. [The resulting production run](https://github.com/Talha-hub-wq/daily-ai-news/actions/runs/39580143229) started at **2:51:07 PM** with the 3:00 PM timing gate. The normal daily **2:40 PM** schedule was restored and read back; its next execution is **October 22 at 2:40 PM**. This confirms scheduler-to-workflow delivery; inbox receipt remains a separate check.
+
 ## 1. Create the free scheduler account
 
 Open [cron-job.org Console](https://console.cron-job.org/), create a free account, verify your email, and sign in. In **Settings**, generate an API key. Keep it private.
 
-This computer session has no controllable browser, so account creation/sign-in must be completed by you. No cron-job.org job has been created yet.
+The current deployment has an enabled cron-job.org job, ID `8692525`, configured for **2:40 PM Asia/Karachi** each day and the **3:00 PM** email target. These instructions also describe how to recreate the integration or rotate its credentials. Reuse this job ID with `--job-id` when changing the time.
 
 ## 2. Create a restricted GitHub dispatch token
 
