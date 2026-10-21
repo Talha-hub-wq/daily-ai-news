@@ -51,7 +51,7 @@ EMAIL_PASSWORD=your_smtp_password
 EMAIL_RECIPIENT=recipient@example.com
 SMTP_SERVER=smtp.gmail.com
 SMTP_PORT=587
-SCHEDULE_TIME=22:00
+SCHEDULE_TIME=11:40
 SCHEDULE_TIMEZONE=Asia/Karachi
 ```
 
@@ -77,7 +77,7 @@ One intentional news fetch and email delivery:
 .\venv\Scripts\python.exe app/main.py --run-once
 ```
 
-One-shot mode sends real email and exits nonzero on failure. The default internal schedule is `22:00` in `Asia/Karachi` (10 PM Pakistan time), independent of the host timezone. Use `python app/main.py --check-services` to check Ollama/model availability without fetching news or sending mail.
+One-shot mode sends real email and exits nonzero on failure. The default internal schedule is `11:40` in `Asia/Karachi` (11:40 AM Pakistan time), independent of the host timezone. Use `python app/main.py --check-services` to check Ollama/model availability without fetching news or sending mail.
 
 ## Verify local inference without sending email
 
@@ -108,7 +108,7 @@ Offline checks:
 | `EMAIL_PASSWORD` | Empty | Required SMTP password |
 | `EMAIL_RECIPIENT` | Empty | Required recipient |
 | `SMTP_SERVER` / `SMTP_PORT` | `smtp.gmail.com` / `587` | SMTP with STARTTLS |
-| `SCHEDULE_TIME` | `22:00` | Internal daily job time |
+| `SCHEDULE_TIME` | `11:40` | Internal daily job time |
 | `SCHEDULE_TIMEZONE` | `Asia/Karachi` | Internal job timezone |
 | `LLM_API_TOKEN` | Empty | Optional bearer token for a secured Ollama gateway |
 | `TRIGGER_TOKEN` | Empty | Bearer token for HTTP trigger/log routes; blank disables access |
@@ -126,7 +126,8 @@ Actual story/post content takes priority over description metadata in summaries.
 
 Trigger and log routes require `Authorization: Bearer <TRIGGER_TOKEN>`. A blank token disables access. The root response reports liveness only. The pipeline checks Ollama/model availability before fetching news; individual inference failures can still use source-text fallbacks.
 
-The GitHub email workflow starts preparation at `45 16 * * *` (9:45 PM Pakistan time), then holds the digest until 10 PM Pakistan time and runs the full pipeline, including Ollama, on a standard cloud runner. It runs from the default branch; setting repository variable `DAILY_NEWS_SCHEDULER=disabled` pauses scheduled sends. GitHub may delay scheduled starts. Scheduled mode permits up to one hour of lateness; later runs fail without sending a stale digest. The keep-alive workflow is manual only. Use one scheduler to avoid duplicate sends.
+The GitHub workflow checks every 15 minutes (`7,22,37,52 * * * *` UTC). The delivery target is **11:40 AM Asia/Karachi** (06:40 UTC), and preparation is permitted up to 30 minutes earlier. Delayed jobs can catch up during the same Pakistan calendar day. A cached daily delivery ledger skips already-submitted digests; an uncertain SMTP result requires inspection before retrying. Checks outside the preparation/delivery window do not start Ollama. Set `DAILY_NEWS_SCHEDULER=disabled` to pause scheduled checks. GitHub may delay or drop cron events, so exact inbox timing remains unguaranteed. Manual dispatch can use the `scheduled` input to test the real timing gate; otherwise it sends immediately, subject to the same daily ledger. The keep-alive workflow is manual only.
+
 
 ## Deployment
 

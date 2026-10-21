@@ -2,10 +2,15 @@ name: Daily AI News Email
 
 on:
   schedule:
-    # Prepare at 21:45 PKT, then hold delivery until 22:00 PKT (17:00 UTC).
-    # GitHub may delay the start; --scheduled rejects runs outside the window.
-    - cron: '45 16 * * *'
+    # Frequent UTC checks absorb delayed GitHub cron events.
+    # The application holds delivery until 11:40 AM PKT (06:40 UTC).
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
+    inputs:
+      scheduled:
+        description: Respect the configured local delivery time
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -16,7 +21,6 @@ concurrency:
 
 jobs:
   send-news:
-    # Set this variable to disabled to pause scheduled sends without changing YAML.
     if: github.event_name == 'workflow_dispatch' || vars.DAILY_NEWS_SCHEDULER != 'disabled'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -27,8 +31,9 @@ jobs:
       LLM_TIMEOUT: '180'
       LLM_MAX_TOKENS: '160'
       LLM_TEMPERATURE: '0.3'
-      SCHEDULE_TIME: '22:00'
+      SCHEDULE_TIME: '11:40'
       SCHEDULE_TIMEZONE: Asia/Karachi
+      RESPECT_SCHEDULE: ${{ github.event_name == 'schedule' || inputs.scheduled }}
       SMTP_SERVER: ${{ vars.SMTP_SERVER || 'smtp.gmail.com' }}
       SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
       OLLAMA_HOST: 127.0.0.1:11434
@@ -45,7 +50,52 @@ jobs:
           cache: pip
       - name: Install Python dependencies
         run: python -m pip install -r requirements.txt
+      - name: Check whether today's digest is due
+        id: gate
+        run: |
+          python - <<'PY'
+          import os
+          from datetime import datetime, timezone
+          import pytz
+          from app.delivery_time import scheduled_delivery_target
+          from config.settings import SCHEDULE_TIME, SCHEDULE_TIMEZONE
+          now = datetime.now(timezone.utc)
+          date = now.astimezone(pytz.timezone(SCHEDULE_TIMEZONE)).date().isoformat()
+          eligible = True
+          if os.getenv('RESPECT_SCHEDULE') == 'true':
+              try:
+                  scheduled_delivery_target(SCHEDULE_TIME, SCHEDULE_TIMEZONE, now)
+              except RuntimeError:
+                  eligible = False
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'eligible={str(eligible).lower()}\ndate={date}\nstate_path=.delivery-state/{date}.json\n')
+          print(f'Pakistan date: {date}; delivery due: {eligible}; target: {SCHEDULE_TIME}')
+          PY
+      - name: Restore today's delivery record
+        if: steps.gate.outputs.eligible == 'true'
+        id: delivery-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .delivery-state
+          key: news-delivery-v1-${{ steps.gate.outputs.date }}
+      - name: Skip a previously submitted digest
+        if: steps.gate.outputs.eligible == 'true'
+        id: ready
+        env:
+          DELIVERY_STATE_PATH: ${{ steps.gate.outputs.state_path }}
+          DIGEST_DATE: ${{ steps.gate.outputs.date }}
+        run: |
+          python - <<'PY'
+          import os
+          from app.delivery_state import DeliveryState
+          state = DeliveryState(os.environ['DELIVERY_STATE_PATH'], os.environ['DIGEST_DATE'])
+          send = state.can_send()
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'send={str(send).lower()}\n')
+          print('Digest needs delivery' if send else 'Already delivered today; skipping duplicate')
+          PY
       - name: Validate private configuration
+        if: steps.ready.outputs.send == 'true'
         env:
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
@@ -53,6 +103,7 @@ jobs:
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: python -c "from config.settings import validate_config; validate_config(); print('Configuration valid')"
       - name: Install and start Ollama on this cloud runner
+        if: steps.ready.outputs.send == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -61,7 +112,6 @@ jobs:
           curl --fail --silent --show-error --location --retry 3 --max-time 120 \
             https://ollama.com/install.sh -o "$RUNNER_TEMP/install-ollama.sh"
           timeout 15m sh "$RUNNER_TEMP/install-ollama.sh"
-          # Run as the runner user so model storage/settings use this job's env.
           sudo systemctl stop ollama || true
           ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
           for attempt in $(seq 1 30); do
@@ -72,29 +122,41 @@ jobs:
           done
           curl --fail --silent --show-error http://127.0.0.1:11434/api/tags > /dev/null
       - name: Download the CPU-sized model
+        if: steps.ready.outputs.send == 'true'
         run: timeout 15m ollama pull "$LLM_MODEL"
       - name: Check model, fetch news and send one email
+        if: steps.ready.outputs.send == 'true'
         env:
+          DELIVERY_STATE_PATH: ${{ steps.gate.outputs.state_path }}
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: |
           python app/main.py --check-services
-          # No automatic delivery retry: a timeout may occur after SMTP acceptance.
-          if [ "$GITHUB_EVENT_NAME" = schedule ]; then
+          if [ "$RESPECT_SCHEDULE" = true ]; then
             python app/main.py --run-once --scheduled
           else
             python app/main.py --run-once
           fi
-      - name: Record delivery time
+      - name: Persist the delivery result, including an uncertain SMTP outcome
+        if: always() && steps.ready.outputs.send == 'true' && hashFiles('.delivery-state/*.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .delivery-state
+          key: news-delivery-v1-${{ steps.gate.outputs.date }}
+      - name: Record delivery status
+        if: always()
         run: |
           python - <<'PY'
           from datetime import datetime
           from zoneinfo import ZoneInfo
-          import os
+          from pathlib import Path
+          import json, os
           now = datetime.now(ZoneInfo('Asia/Karachi'))
+          records = [json.loads(p.read_text()) for p in Path('.delivery-state').glob('*.json')]
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-              summary.write(f'Digest completed at {now:%Y-%m-%d %H:%M:%S} Pakistan time.\n')
-              summary.write('Scheduled SMTP target: 22:00 Asia/Karachi. Manual tests send immediately.\n')
+              summary.write(f'Checked at {now:%Y-%m-%d %H:%M:%S} Pakistan time.\n')
+              summary.write(f'Daily target: {os.environ["SCHEDULE_TIME"]} Asia/Karachi.\n')
+              summary.write(f'Delivery records: {records}\n')
           PY

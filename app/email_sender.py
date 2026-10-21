@@ -7,7 +7,7 @@ from email.mime.multipart import MIMEMultipart
 from typing import List, Dict
 import pytz
 
-from config.settings import SCHEDULE_TIMEZONE
+from config.settings import SCHEDULE_TIME, SCHEDULE_TIMEZONE
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +46,8 @@ class EmailSender:
             # Build email content
             html_content = self._build_html_content(template, ai_news, world_news, hackernews, nitter_tweets)
             html_content = html_content.replace("{{ DIGEST_DATE }}", digest_date)
+            html_content = html_content.replace("{{ SCHEDULE_TIME }}", SCHEDULE_TIME)
+            html_content = html_content.replace("{{ SCHEDULE_TIMEZONE }}", SCHEDULE_TIMEZONE)
             html_content = html_content.replace(
                 "{{ GENERATED_AT }}", generated_at.strftime("%Y-%m-%d %I:%M %p %Z")
             )

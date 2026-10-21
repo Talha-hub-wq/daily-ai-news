@@ -1,4 +1,4 @@
-"""Keep scheduled delivery on the intended local evening."""
+"""Plan local-day delivery, including catch-up after a delayed scheduler start."""
 import time
 from datetime import datetime, time as time_of_day, timedelta, timezone
 
@@ -6,18 +6,17 @@ import pytz
 
 
 PREPARATION_WINDOW = timedelta(minutes=30)
-MAX_LATENESS = timedelta(minutes=60)
 
 
 def scheduled_delivery_target(time_str, timezone_name, now=None):
-    """Permit preparation shortly before the target, or delivery up to one hour late."""
+    """Permit preparation shortly before the target and catch-up on the same local day."""
     now = now if now is not None else datetime.now(timezone.utc)
     zone = pytz.timezone(timezone_name)
     local_now = now.astimezone(zone)
     hour, minute = map(int, time_str.split(":"))
     target = zone.localize(datetime.combine(local_now.date(), time_of_day(hour, minute)))
-    if not target - PREPARATION_WINDOW <= local_now <= target + MAX_LATENESS:
-        raise RuntimeError("Scheduled run is outside the delivery window; refusing a stale digest")
+    if local_now < target - PREPARATION_WINDOW:
+        raise RuntimeError("Daily delivery is not due yet")
     return target
 
 
@@ -27,8 +26,8 @@ def wait_until_delivery(target, clock=None, sleep=None):
     sleep = sleep if sleep is not None else time.sleep
     while True:
         now = clock()
-        if now > target + MAX_LATENESS:
-            raise RuntimeError("Digest preparation exceeded the delivery window; email not sent")
+        if now.astimezone(target.tzinfo).date() != target.date():
+            raise RuntimeError("Digest preparation crossed its local calendar day; email not sent")
         remaining = (target - now).total_seconds()
         if remaining <= 0:
             return
