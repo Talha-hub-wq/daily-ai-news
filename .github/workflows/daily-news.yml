@@ -3,7 +3,7 @@ name: Daily AI News Email
 on:
   schedule:
     # Frequent UTC checks absorb delayed GitHub cron events.
-    # The application holds delivery until 12:15 PM PKT (07:15 UTC).
+    # The application holds delivery until 2:30 PM PKT (09:30 UTC).
     - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
     inputs:
@@ -31,7 +31,7 @@ jobs:
       LLM_TIMEOUT: '180'
       LLM_MAX_TOKENS: '160'
       LLM_TEMPERATURE: '0.3'
-      SCHEDULE_TIME: '12:15'
+      SCHEDULE_TIME: '14:30'
       SCHEDULE_TIMEZONE: Asia/Karachi
       RESPECT_SCHEDULE: ${{ github.event_name == 'schedule' || inputs.scheduled }}
       SMTP_SERVER: ${{ vars.SMTP_SERVER || 'smtp.gmail.com' }}

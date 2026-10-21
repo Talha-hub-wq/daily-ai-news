@@ -35,15 +35,15 @@ class DeliveryWindowTests(unittest.TestCase):
         wait_until_delivery(target, clock=lambda: now, sleep=Mock())
 
     def test_three_hour_delay_is_caught_up_instead_of_losing_the_email(self):
-        now = datetime(2026, 10, 21, 10, 15, tzinfo=timezone.utc)
-        target = scheduled_delivery_target("12:15", "Asia/Karachi", now)
-        self.assertEqual((target.hour, target.minute), (12, 15))
+        now = datetime(2026, 10, 21, 12, 30, tzinfo=timezone.utc)
+        target = scheduled_delivery_target("14:30", "Asia/Karachi", now)
+        self.assertEqual((target.hour, target.minute), (14, 30))
         wait_until_delivery(target, clock=lambda: now, sleep=Mock())
 
-    def test_afternoon_target_is_0715_utc(self):
-        now = datetime(2026, 10, 21, 7, 0, tzinfo=timezone.utc)
-        target = scheduled_delivery_target("12:15", "Asia/Karachi", now)
-        self.assertEqual(target.astimezone(timezone.utc).strftime("%H:%M"), "07:15")
+    def test_afternoon_target_is_0930_utc(self):
+        now = datetime(2026, 10, 21, 9, 15, tzinfo=timezone.utc)
+        target = scheduled_delivery_target("14:30", "Asia/Karachi", now)
+        self.assertEqual(target.astimezone(timezone.utc).strftime("%H:%M"), "09:30")
 
     def test_waits_until_target_without_sending_early(self):
         target = datetime(2026, 10, 19, 17, tzinfo=timezone.utc)

@@ -27,7 +27,7 @@ EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
 EMAIL_RECIPIENT = os.getenv("EMAIL_RECIPIENT", "")
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SCHEDULE_TIME = os.getenv("SCHEDULE_TIME", "12:15")
+SCHEDULE_TIME = os.getenv("SCHEDULE_TIME", "14:30")
 SCHEDULE_TIMEZONE = os.getenv("SCHEDULE_TIMEZONE", "Asia/Karachi")
 
 NEWS_LIMIT = 5

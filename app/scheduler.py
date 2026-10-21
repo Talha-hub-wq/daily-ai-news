@@ -16,7 +16,7 @@ class NewsScheduler:
         """Schedule a job to run daily at specified time.
         
         Args:
-            time_str: Time in HH:MM format (24-hour), e.g., "12:15" for 12:15 PM
+            time_str: Time in HH:MM format (24-hour), e.g., "14:30" for 2:30 PM
             job_func: Function to execute
         """
         try:
